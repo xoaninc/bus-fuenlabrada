@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#135FCB">
+<title>L4 Loranca · 15956</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Una sola pantalla, como el panel de la marquesina: el número de minutos manda. */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --ink: #101a2b;
+  --muted: #5a667c;
+  --rule: #d8deea;
+  --accent: #135fcb;
+  --ok: #17803f;
+  --late: #a8590a;
+  --bad: #b42318;
+  --alert-bg: #fff4e5;
+  --alert-ink: #6b3a00;
+  --font-display: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b111c; --surface: #131c2c; --ink: #e9eef8; --muted: #9aa6bd; --rule: #263248;
+    --accent: #5d9bff; --ok: #4cc27a; --late: #f0a94b; --bad: #ff7a6b; --alert-bg: #2a1f10; --alert-ink: #f6d3a2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b111c; --surface: #131c2c; --ink: #e9eef8; --muted: #9aa6bd; --rule: #263248;
+  --accent: #5d9bff; --ok: #4cc27a; --late: #f0a94b; --bad: #ff7a6b; --alert-bg: #2a1f10; --alert-ink: #f6d3a2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 17px/1.45 var(--font-body);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.wrap {
+  max-width: 30rem; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 28px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.top { display: flex; align-items: center; gap: 14px; }
+.badge {
+  flex: none; width: 3.4rem; height: 3.4rem; border-radius: 10px;
+  display: grid; place-items: center; background: #135fcb; color: #fff;
+  font: 700 1.9rem/1 var(--font-display);
+}
+.top-text { min-width: 0; }
+.dest { margin: 0; font: 700 1.75rem/1.05 var(--font-display); }
+.dest span { color: var(--muted); font-weight: 600; }
+.stop { margin: 2px 0 0; color: var(--muted); font-size: .95rem; }
+.stop b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.hero {
+  background: var(--surface); border: 1px solid var(--rule); border-top: 6px solid var(--accent); border-radius: 16px;
+  padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 8px;
+}
+.hero.ok { border-top-color: var(--ok); }
+.hero.late { border-top-color: var(--late); }
+.hero.bad { border-top-color: var(--bad); }
+.hero.muted { border-top-color: var(--muted); }
+.hero p { margin: 0; }
+.hero-count { display: flex; align-items: baseline; gap: 8px; font-family: var(--font-display); line-height: .9; }
+.hero-count .num { font-size: clamp(5rem, 30vw, 8rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.hero-count .num.small { font-size: clamp(2.6rem, 13vw, 4rem); overflow-wrap: anywhere; }
+.hero-note { color: var(--bad); font-weight: 600; font-size: .95rem; }
+.hero-count .unit { font-size: 2.2rem; font-weight: 600; color: var(--muted); }
+.hero-time { font-size: 1.15rem; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.hero-time strong { font-variant-numeric: tabular-nums; }
+.hero-gps { color: var(--muted); font-size: .95rem; border-left: 3px solid var(--accent); padding-left: 10px; }
+.hero-none { color: var(--muted); font-size: 1.05rem; padding: 14px 0; }
+.chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .85rem; font-weight: 600; border: 1px solid currentColor; white-space: nowrap; }
+.chip.ok { color: var(--ok); }
+.chip.late { color: var(--late); }
+.chip.bad { color: var(--bad); }
+.chip.muted { color: var(--muted); }
+.next { margin: 0; padding: 0 4px; color: var(--muted); }
+.next:empty { display: none; }
+.next strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.alerts { display: flex; flex-direction: column; gap: 8px; }
+.alert { background: var(--alert-bg); color: var(--alert-ink); border-radius: 12px; padding: 10px 14px; }
+.alert p { margin: 0; }
+.alert, .hero, .error, .expired, .next { overflow-wrap: anywhere; }
+.gap { color: var(--bad); }
+.alert-h { font-weight: 600; }
+.alert-t { font-size: .92rem; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.status { color: var(--muted); font-size: .85rem; margin: 0; min-width: 0; flex: 1 1 12rem; }
+.stale { color: var(--late); font-weight: 600; }
+.error, .expired { margin: 0; border-radius: 12px; padding: 10px 14px; font-size: .92rem; background: var(--surface); border: 1px solid var(--bad); }
+.expired { border-color: var(--late); display: flex; flex-direction: column; gap: 8px; }
+.expired p { margin: 0; }
+button, .file-btn {
+  font: 600 .95rem/1 var(--font-body); color: var(--accent); background: transparent;
+  border: 1.5px solid var(--accent); border-radius: 10px; padding: 10px 14px; cursor: pointer;
+}
+.file-btn { position: relative; overflow: hidden; align-self: flex-start; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+button:focus-visible, a:focus-visible, .file-btn:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+.msg { color: var(--muted); }
+.msg:empty { display: none; }
+.foot { color: var(--muted); font-size: .8rem; margin: 0; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div class="badge" aria-hidden="true">L4</div>
+    <div class="top-text">
+      <h1 class="dest"><span>→</span> Loranca</h1>
+      <p class="stop">Parada <b>15956</b> · Avenida Regiones - Nazaret</p>
+    </div>
+  </header>
+
+  <section class="hero" id="hero"><p class="hero-none">Cargando…</p></section>
+  <p class="next" id="next"></p>
+
+  <section class="alerts" id="alerts" hidden aria-label="Avisos de tu parada"></section>
+  <p class="error" id="error" hidden></p>
+
+  <div class="expired" id="expired" hidden>
+    <p>El horario de esta página caducó el <span id="valid"></span>. Las horas son aproximadas hasta que cargues el nuevo: descarga el GTFS-ZIP de EMTF en el <a id="nap-link" target="_blank" rel="noopener">NAP</a> y elígelo aquí.</p>
+    <label class="file-btn">Cargar GTFS (.zip)<input type="file" id="gtfs-file" accept=".zip,application/zip"></label>
+  </div>
+  <p class="msg" id="gtfs-msg" aria-live="polite"></p>
+
+  <div class="bar">
+    <p class="status" id="status">Descargando datos en directo…</p>
+    <button type="button" id="btn-refresh">Actualizar</button>
+  </div>
+  <p class="foot">Tiempo real de EMT Fuenlabrada (NAP · Optibus). Se actualiza solo cada 30 s.</p>
+</main>
+<script>window.BUS_SCHEDULE = {"v":1,"feed":{"start":"20261025","end":"20261109","version":"1.0"},"routes":{"4":["4","Loranca - La fuente","135FCB"]},"stops":{"7720":["Avenida Naciones - Parque",40.286201,-3.802439],"7726":["Francia - Holanda",40.285097,-3.804921],"7727":["Francia - Estación Parque Europa",40.285096,-3.806435],"7739":["Luis Sauquillo - El Arroyo",40.277863,-3.801661],"7742":["Comunidad De Madrid - Plaza Valdehondillo",40.276939,-3.800408],"7743":["Comunidad De Madrid - Panaderas",40.277285,-3.798713],"7748":["Luis Sauquillo - Escorial",40.281759,-3.797717],"7771":["Leganés - Los Ángeles",40.287034,-3.792427],"7781":["Luis Sauquillo - Tesillo",40.284431,-3.794252],"11173":["Francia - Paseo Setúbal",40.285285,-3.810365],"11681":["Avenida Pablo Iglesias - Dolores Ibárruri",40.296264,-3.835997],"11682":["Avenida Pablo Iglesias - Gabriela Mistral",40.296877,-3.833452],"12423":["Clara Campoamor - Ana Frank",40.294908,-3.831695],"12631":["Camino Molino - Universidad Rey Juan Carlos",40.285651,-3.818741],"12633":["Bortelano - Paseo Loranca",40.291958,-3.830511],"12638":["Camino Del Molino - Hospital De Fuenlabrada",40.285739,-3.816035],"12869":["Fuentevaqueros - Hontanar",40.27583,-3.793241],"12870":["Noria - Fontana",40.277292,-3.78969],"12872":["Noria - Eras",40.277001,-3.791834],"15956":["Avenida Regiones - Nazaret",40.28783,-3.798328],"15958":["Málaga - Polvoranca",40.287934,-3.794636],"18649":["Camino San Marcos - Averroes",40.288395,-3.823723],"18651":["Camino San Marcos - Campo Fernando Torres",40.29093,-3.82777]},"patterns":[["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,0,120,300,300,360,420,540,600,720,780,840,960,1020,1020,1080,1200,1260,1440,1500,1620,1680,1740,1800],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,60,120,300,360,360,480,600,720,840,900,1020,1140,1200,1260,1320,1500,1500,1740,1860,1920,2040,2160,2220],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,0,120,300,360,360,420,600,720,780,900,960,1080,1140,1200,1260,1380,1440,1620,1740,1860,1980,2040,2100],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,0,120,240,300,300,360,480,600,660,720,780,900,960,1020,1080,1200,1200,1380,1500,1560,1620,1740,1800],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,0,120,240,240,300,360,480,540,660,720,780,900,960,960,1020,1140,1200,1320,1440,1500,1620,1680,1740],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,60,180,360,420,480,540,720,900,1020,1140,1200,1380,1440,1500,1620,1800,1860,2100,2220,2340,2520,2640,2700],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,60,180,360,420,480,540,720,900,1020,1080,1200,1380,1440,1500,1620,1800,1860,2040,2220,2340,2460,2580,2700],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,60,180,300,420,480,540,720,900,960,1080,1200,1380,1440,1500,1620,1800,1860,2040,2220,2340,2520,2580,2700],0],["4",0,"LORANCA",["12870","12872","12869","7739","7743","7742","7739","7748","7781","7771","15958","15956","7720","7726","7727","11173","12638","12631","18649","18651","12633","12423","11682","11681"],[0,0,120,240,300,300,360,480,600,660,720,840,900,960,1020,1080,1200,1260,1380,1500,1560,1680,1740,1800],0]],"trips":{"UNDEFINED_2026-10-25":[[0,50280],[0,52020],[0,68100]],"Domingo y Festivos Invierno":[[1,69900],[0,82800],[1,68700],[1,45900],[1,49500],[1,53100],[1,56700],[1,60300],[1,63900],[1,25500],[1,29100],[1,32700],[1,36300],[1,39900],[1,43500],[1,47100],[1,50700],[1,54300],[1,57900],[1,61500],[1,65100],[1,26700],[1,30300],[1,33900],[1,37500],[1,41100],[1,44700],[1,48300],[1,51900],[1,55500],[1,59100],[1,62700],[1,66300],[1,24300],[1,27900],[1,31500],[1,35100],[1,38700],[1,42300],[1,67500],[1,72300],[2,79500],[2,78300],[1,73500],[2,80700],[1,74700],[2,77100],[1,71100],[1,75900]],"2026-10-26":[[3,21600],[3,22500],[4,23460],[5,24300],[5,25200],[5,26100],[5,27000],[5,27900],[5,28800],[5,29700],[5,30600],[5,31500],[5,32400],[5,33300],[5,34200],[5,35100],[5,36000],[5,36900],[5,37800],[5,38700],[5,39600],[5,40500],[5,41400],[5,42300],[5,43200],[5,44100],[5,45000],[5,45900],[5,46800],[5,47700],[5,48600],[5,49500],[5,50400],[5,51300],[5,52200],[5,53100],[5,54000],[5,54900],[5,55800],[5,56700],[5,57600],[5,58500],[5,59400],[5,60300],[5,61200],[5,62100],[5,63000],[5,63900],[5,64800],[5,65700],[5,66600],[5,67500],[5,68400],[5,69300],[5,70200],[5,71100],[5,72000],[5,72900],[5,73800],[6,74700],[3,75600],[3,76500],[3,77400],[7,78300],[0,79200],[8,81000],[8,82800]],"2026-10-25":[[1,24300],[1,25500],[1,26700],[1,27900],[1,29100],[1,30300],[1,31500],[1,32700],[1,33900],[1,35100],[1,36300],[1,37500],[1,38700],[1,39900],[1,41100],[1,42300],[1,43500],[1,44700],[1,45900],[1,47100],[1,48300],[1,49500],[1,50700],[1,51900],[1,53100],[1,54300],[1,55500],[1,56700],[1,57900],[1,59100],[1,60300],[1,61500],[1,62700],[1,63900],[1,65100],[1,66300],[1,67500],[1,68700],[1,71100],[1,72300],[1,73500],[1,74700],[1,75900],[2,77100],[2,78300],[2,79500],[2,80700],[0,82800]],"Laborable Invierno miercoles":[[3,21600],[5,25200],[5,29700],[5,34200],[5,38700],[5,43200],[5,47700],[5,52200],[5,56700],[5,61200],[5,65700],[5,70200],[5,74700],[8,81000],[3,22500],[5,26100],[5,30600],[5,35100],[5,39600],[5,44100],[5,48600],[5,53100],[5,57600],[5,62100],[5,66600],[5,71100],[3,75600],[3,23400],[5,27000],[5,31500],[5,36000],[5,40500],[5,45000],[5,49500],[5,54000],[5,58500],[5,63000],[5,67500],[5,72000],[3,76500],[5,24300],[5,27900],[5,32400],[5,36900],[5,41400],[5,45900],[5,59400],[5,63900],[5,68400],[5,72900],[3,77400],[5,28800],[5,33300],[5,37800],[5,42300],[5,46800],[5,51300],[5,55800],[5,60300],[5,64800],[5,69300],[5,73800],[3,79200],[5,50400],[5,54900],[5,78300],[8,82800]],"Laborable Invierno":[[3,21600],[5,25200],[5,29700],[5,34200],[5,38700],[5,43200],[5,47700],[5,52200],[5,56700],[5,61200],[5,65700],[5,70200],[6,74700],[8,81000],[3,22500],[5,26100],[5,30600],[5,35100],[5,39600],[5,44100],[5,48600],[5,53100],[5,57600],[5,62100],[5,66600],[5,71100],[3,75600],[4,23460],[5,27000],[5,31500],[5,36000],[5,40500],[5,45000],[5,49500],[5,54000],[5,58500],[5,63000],[5,67500],[5,72000],[3,76500],[5,24300],[5,27900],[5,32400],[5,36900],[5,41400],[5,45900],[5,59400],[5,63900],[5,68400],[5,72900],[3,77400],[5,28800],[5,33300],[5,37800],[5,42300],[5,46800],[5,51300],[5,55800],[5,60300],[5,64800],[5,69300],[5,73800],[0,79200],[5,50400],[5,54900],[8,82800],[7,78300]],"Sabado Invierno":[[1,73500],[1,71100],[2,79500],[1,49500],[1,53100],[1,56700],[1,60300],[1,63900],[1,67500],[1,25500],[1,29100],[1,32700],[1,36300],[1,39900],[1,43500],[1,47100],[1,50700],[1,54300],[1,57900],[1,61500],[1,65100],[1,68700],[1,26700],[1,30300],[1,33900],[1,37500],[1,41100],[1,44700],[1,48300],[1,51900],[1,55500],[1,59100],[1,62700],[1,66300],[1,24300],[1,27900],[1,31500],[1,35100],[1,38700],[1,42300],[1,45900],[1,75900],[0,82800],[2,77100],[1,74700],[2,78300],[1,69900],[1,72300],[2,80700]]},"dates":{"20261025":["2026-10-25","UNDEFINED_2026-10-25"],"20261026":["2026-10-26"],"20261027":["Laborable Invierno"],"20261028":["Laborable Invierno miercoles"],"20261029":["Laborable Invierno"],"20261030":["Laborable Invierno"],"20261031":["Sabado Invierno"],"20261101":["Domingo y Festivos Invierno"],"20261102":["Domingo y Festivos Invierno"],"20261103":["Laborable Invierno"],"20261104":["Laborable Invierno miercoles"],"20261105":["Laborable Invierno"],"20261106":["Laborable Invierno"],"20261107":["Sabado Invierno"],"20261108":["Domingo y Festivos Invierno"],"20261109":["Laborable Invierno"]}};</script>
+<script>// Núcleo sin DOM: horario GTFS compacto, decodificador GTFS-Realtime y cálculo de llegadas.
+// Se usa tal cual en el navegador (global BusCore) y en Node (module.exports) para el build y los tests.
+var BusCore = (function () {
+  "use strict";
+  var TZ = "Europe/Madrid";
+
+  // ---------- CSV ----------
+  function splitQuoted(line) {
+    var out = [], field = "", q = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (q) {
+        if (c === '"') { if (line[i + 1] === '"') { field += '"'; i++; } else q = false; }
+        else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { out.push(field); field = ""; }
+      else field += c;
+    }
+    out.push(field);
+    return out;
+  }
+  function parseCSV(text) {
+    if (!text) return [];
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    var lines = text.split("\n"), rows = [], head = null;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+      // Campo entrecomillado con salto de línea dentro: juntar con la siguiente línea.
+      while (line.split('"').length % 2 === 0 && i + 1 < lines.length) line += "\n" + lines[++i].replace(/\r$/, "");
+      if (line === "") continue;
+      var cells = line.indexOf('"') < 0 ? line.split(",") : splitQuoted(line);
+      if (!head) { head = cells.map(function (h) { return h.trim(); }); continue; }
+      var o = {};
+      for (var k = 0; k < head.length; k++) o[head[k]] = cells[k] === undefined ? "" : cells[k].trim();
+      rows.push(o);
+    }
+    return rows;
+  }
+
+  function hms(s) {
+    if (!s) return null;
+    var m = /^\s*(\d+):(\d{2}):(\d{2})\s*$/.exec(s);
+    return m ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) : null;
+  }
+
+  // ---------- Horario compacto a partir del GTFS ----------
+  // get(nombre) devuelve el texto de un fichero del zip o null.
+  function deriveSchedule(get) {
+    function req(n) { var t = get(n); if (t == null) throw new Error("El GTFS no trae " + n); return t; }
+    var routes = {};
+    parseCSV(req("routes.txt")).forEach(function (r) {
+      routes[r.route_id] = [r.route_short_name || r.route_id, r.route_long_name || "", (r.route_color || "").replace("#", "")];
+    });
+    var allStops = {};
+    parseCSV(req("stops.txt")).forEach(function (s) {
+      allStops[s.stop_id] = [s.stop_name, +(+s.stop_lat).toFixed(6), +(+s.stop_lon).toFixed(6)];
+    });
+    var dates = {};
+    function add(d, s) { (dates[d] = dates[d] || {})[s] = 1; }
+    var cal = get("calendar.txt");
+    if (cal) parseCSV(cal).forEach(function (c) {
+      var days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      var d = new Date(Date.UTC(+c.start_date.slice(0, 4), +c.start_date.slice(4, 6) - 1, +c.start_date.slice(6, 8)));
+      var end = Date.UTC(+c.end_date.slice(0, 4), +c.end_date.slice(4, 6) - 1, +c.end_date.slice(6, 8));
+      for (; d.getTime() <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+        if (c[days[d.getUTCDay()]] === "1") add(d.toISOString().slice(0, 10).replace(/-/g, ""), c.service_id);
+      }
+    });
+    var cd = get("calendar_dates.txt");
+    if (cd) parseCSV(cd).forEach(function (c) {
+      if (c.exception_type === "1") add(c.date, c.service_id);
+      else if (c.exception_type === "2" && dates[c.date]) delete dates[c.date][c.service_id];
+    });
+    var trips = {};
+    parseCSV(req("trips.txt")).forEach(function (t) { trips[t.trip_id] = t; });
+    var byTrip = {};
+    parseCSV(req("stop_times.txt")).forEach(function (st) {
+      if (!trips[st.trip_id]) return;
+      (byTrip[st.trip_id] = byTrip[st.trip_id] || []).push(st);
+    });
+    var patterns = [], pIndex = {}, svcTrips = {}, usedStops = {};
+    Object.keys(byTrip).forEach(function (tid) {
+      var sts = byTrip[tid].sort(function (a, b) { return a.stop_sequence - b.stop_sequence; });
+      var times = sts.map(function (s) { return hms(s.arrival_time) != null ? hms(s.arrival_time) : hms(s.departure_time); });
+      // Rellena horas vacías interpolando entre paradas con hora.
+      var known = [];
+      times.forEach(function (t, i) { if (t != null) known.push(i); });
+      if (!known.length) return;
+      for (var i = 0; i < times.length; i++) {
+        if (times[i] != null) continue;
+        var a = null, b = null;
+        for (var k = 0; k < known.length; k++) { if (known[k] < i) a = known[k]; else if (b == null) b = known[k]; }
+        if (a == null) times[i] = times[b]; else if (b == null) times[i] = times[a];
+        else times[i] = Math.round(times[a] + (times[b] - times[a]) * (i - a) / (b - a));
+      }
+      var t0 = hms(sts[0].departure_time) != null ? hms(sts[0].departure_time) : times[0];
+      var ids = sts.map(function (s) { usedStops[s.stop_id] = 1; return s.stop_id; });
+      var seqs = sts.map(function (s) { return +s.stop_sequence; });
+      var contiguous = seqs.every(function (v, i) { return v === i + 1; });
+      var offs = times.map(function (t) { return t - t0; });
+      var tr = trips[tid], dir = +(tr.direction_id || 0);
+      var key = [tr.route_id, dir, tr.trip_headsign || "", ids.join(","), seqs.join(","), offs.join(",")].join("|");
+      var pi = pIndex[key];
+      if (pi === undefined) {
+        pi = pIndex[key] = patterns.length;
+        patterns.push([tr.route_id, dir, tr.trip_headsign || "", ids, offs, contiguous ? 0 : seqs]);
+      }
+      (svcTrips[tr.service_id] = svcTrips[tr.service_id] || []).push([pi, t0]);
+    });
+    var stops = {};
+    Object.keys(usedStops).forEach(function (id) { if (allStops[id]) stops[id] = allStops[id]; });
+    var outDates = {};
+    Object.keys(dates).sort().forEach(function (d) {
+      var s = Object.keys(dates[d]).filter(function (x) { return svcTrips[x]; });
+      if (s.length) outDates[d] = s;
+    });
+    var fi = parseCSV(get("feed_info.txt") || "")[0] || {};
+    var dl = Object.keys(outDates);
+    return {
+      v: 1,
+      feed: { start: fi.feed_start_date || dl[0] || "", end: fi.feed_end_date || dl[dl.length - 1] || "", version: fi.feed_version || "" },
+      routes: routes, stops: stops, patterns: patterns, trips: svcTrips, dates: outDates
+    };
+  }
+
+  function weekday(yyyymmdd) { return new Date(Date.UTC(+yyyymmdd.slice(0, 4), +yyyymmdd.slice(4, 6) - 1, +yyyymmdd.slice(6, 8))).getUTCDay(); }
+  // Deja solo los viajes de una línea y sentido que paran en una parada (la página es para una sola parada).
+  function filterSchedule(sched, cfg) {
+    var map = {}, patterns = [], trips = {}, dates = {}, stops = {}, routes = {};
+    sched.patterns.forEach(function (p, i) {
+      if (p[0] === cfg.route && p[1] === cfg.dir && p[3].indexOf(cfg.stop) >= 0) {
+        map[i] = patterns.length; patterns.push(p);
+        p[3].forEach(function (s) { if (sched.stops[s]) stops[s] = sched.stops[s]; });
+      }
+    });
+    Object.keys(sched.trips).forEach(function (svc) {
+      var t = sched.trips[svc].filter(function (tr) { return map[tr[0]] !== undefined; }).map(function (tr) { return [map[tr[0]], tr[1]]; });
+      if (t.length) trips[svc] = t;
+    });
+    Object.keys(sched.dates).forEach(function (d) {
+      var s = sched.dates[d].filter(function (x) { return trips[x]; });
+      if (s.length) dates[d] = s;
+    });
+    if (sched.routes[cfg.route]) routes[cfg.route] = sched.routes[cfg.route];
+    return { v: 1, feed: sched.feed, routes: routes, stops: stops, patterns: patterns, trips: trips, dates: dates };
+  }
+
+  function indexSchedule(sched) {
+    var byKey = {}, byRD = {}, anyKey = {}, svcDays = {};
+    Object.keys(sched.dates).forEach(function (d) {
+      var wd = weekday(d);
+      sched.dates[d].forEach(function (svc) { (svcDays[svc] = svcDays[svc] || [0, 0, 0, 0, 0, 0, 0])[wd]++; });
+    });
+    Object.keys(sched.trips).forEach(function (svc) {
+      sched.trips[svc].forEach(function (tr) {
+        var p = sched.patterns[tr[0]];
+        byKey[svc + "|" + p[0] + "|" + p[1] + "|" + tr[1]] = tr[0];
+        (byRD[svc + "|" + p[0] + "|" + p[1]] = byRD[svc + "|" + p[0] + "|" + p[1]] || []).push([tr[1], tr[0]]);
+        var k = p[0] + "|" + p[1] + "|" + tr[1];
+        (anyKey[k] = anyKey[k] || []).push([svc, tr[0]]);
+      });
+    });
+    return { byKey: byKey, byRD: byRD, anyKey: anyKey, svcDays: svcDays };
+  }
+
+  // ---------- Protobuf mínimo para GTFS-Realtime ----------
+  var S = {};
+  function f(name, type, rep) { return [name, type, !!rep]; }
+  S.FeedMessage = { 1: f("header", "FeedHeader"), 2: f("entity", "FeedEntity", 1) };
+  S.FeedHeader = { 1: f("gtfs_realtime_version", "string"), 2: f("incrementality", "enum"), 3: f("timestamp", "uint") };
+  S.FeedEntity = { 1: f("id", "string"), 2: f("is_deleted", "bool"), 3: f("trip_update", "TripUpdate"), 4: f("vehicle", "VehiclePosition"), 5: f("alert", "Alert") };
+  S.TripUpdate = { 1: f("trip", "TripDescriptor"), 2: f("stop_time_update", "StopTimeUpdate", 1), 3: f("vehicle", "VehicleDescriptor"), 4: f("timestamp", "uint"), 5: f("delay", "int32") };
+  S.StopTimeUpdate = { 1: f("stop_sequence", "uint"), 2: f("arrival", "StopTimeEvent"), 3: f("departure", "StopTimeEvent"), 4: f("stop_id", "string"), 5: f("schedule_relationship", "enum") };
+  S.StopTimeEvent = { 1: f("delay", "int32"), 2: f("time", "int64"), 3: f("uncertainty", "int32") };
+  S.TripDescriptor = { 1: f("trip_id", "string"), 2: f("start_time", "string"), 3: f("start_date", "string"), 4: f("schedule_relationship", "enum"), 5: f("route_id", "string"), 6: f("direction_id", "uint") };
+  S.VehicleDescriptor = { 1: f("id", "string"), 2: f("label", "string"), 3: f("license_plate", "string") };
+  S.VehiclePosition = { 1: f("trip", "TripDescriptor"), 2: f("position", "Position"), 3: f("current_stop_sequence", "uint"), 4: f("current_status", "enum"), 5: f("timestamp", "uint"), 6: f("congestion_level", "enum"), 7: f("stop_id", "string"), 8: f("vehicle", "VehicleDescriptor"), 9: f("occupancy_status", "enum") };
+  S.Position = { 1: f("latitude", "float"), 2: f("longitude", "float"), 3: f("bearing", "float"), 4: f("odometer", "double"), 5: f("speed", "float") };
+  S.Alert = { 1: f("active_period", "TimeRange", 1), 5: f("informed_entity", "EntitySelector", 1), 6: f("cause", "enum"), 7: f("effect", "enum"), 8: f("url", "TranslatedString"), 10: f("header_text", "TranslatedString"), 11: f("description_text", "TranslatedString") };
+  S.TimeRange = { 1: f("start", "uint"), 2: f("end", "uint") };
+  S.EntitySelector = { 1: f("agency_id", "string"), 2: f("route_id", "string"), 3: f("route_type", "int32"), 4: f("trip", "TripDescriptor"), 5: f("stop_id", "string"), 6: f("direction_id", "uint") };
+  S.TranslatedString = { 1: f("translation", "Translation", 1) };
+  S.Translation = { 1: f("text", "string"), 2: f("language", "string") };
+
+  var utf8 = typeof TextDecoder !== "undefined" ? new TextDecoder("utf-8") : null;
+
+  function decode(u8, start, end, schemaName) {
+    var schema = S[schemaName], obj = {}, dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), pos = start;
+    function varint() {
+      var r = 0n, shift = 0n, b;
+      do {
+        if (pos >= end) throw new Error("protobuf truncado");
+        b = u8[pos++]; r |= BigInt(b & 0x7f) << shift; shift += 7n;
+      } while (b & 0x80);
+      return r;
+    }
+    while (pos < end) {
+      var tag = Number(varint()), fno = tag >>> 3, wt = tag & 7, spec = schema[fno], val, raw;
+      if (wt === 0) raw = varint();
+      else if (wt === 1) { raw = pos; pos += 8; }
+      else if (wt === 2) { var len = Number(varint()); raw = [pos, pos + len]; pos += len; }
+      else if (wt === 5) { raw = pos; pos += 4; }
+      else throw new Error("tipo de cable no soportado: " + wt);
+      if (!spec) continue;
+      var type = spec[1];
+      if (type === "string") val = wt === 2 ? (utf8 ? utf8.decode(u8.subarray(raw[0], raw[1])) : Buffer.from(u8.subarray(raw[0], raw[1])).toString("utf8")) : undefined;
+      else if (type === "uint" || type === "enum") val = Number(raw);
+      else if (type === "bool") val = raw !== 0n;
+      else if (type === "int32") val = Number(BigInt.asIntN(32, raw));
+      else if (type === "int64") val = Number(BigInt.asIntN(64, raw));
+      else if (type === "float") val = dv.getFloat32(raw, true);
+      else if (type === "double") val = dv.getFloat64(raw, true);
+      else val = decode(u8, raw[0], raw[1], type);
+      if (val === undefined) continue;
+      if (spec[2]) (obj[spec[0]] = obj[spec[0]] || []).push(val); else obj[spec[0]] = val;
+    }
+    return obj;
+  }
+  function decodeFeed(bytes) {
+    var u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    return decode(u8, 0, u8.length, "FeedMessage");
+  }
+
+  // ---------- Fechas en Europe/Madrid ----------
+  var dtf = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  function parts(ms) {
+    var o = {};
+    dtf.formatToParts(new Date(ms)).forEach(function (p) { o[p.type] = p.value; });
+    return o;
+  }
+  function tzOffsetMs(ms) {
+    var p = parts(ms);
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
+  }
+  // Base GTFS del día de servicio: mediodía local menos 12 h (correcto también los días de cambio de hora).
+  function serviceBaseMs(yyyymmdd) {
+    var guess = Date.UTC(+yyyymmdd.slice(0, 4), +yyyymmdd.slice(4, 6) - 1, +yyyymmdd.slice(6, 8), 12);
+    return guess - tzOffsetMs(guess) - 12 * 3600e3;
+  }
+  function localDate(ms) { var p = parts(ms); return p.year + p.month + p.day; }
+  function addDays(yyyymmdd, n) {
+    var d = new Date(Date.UTC(+yyyymmdd.slice(0, 4), +yyyymmdd.slice(4, 6) - 1, +yyyymmdd.slice(6, 8) + n));
+    return d.toISOString().slice(0, 10).replace(/-/g, "");
+  }
+
+  // ---------- Llegadas a una parada ----------
+  function dist(a, b) { // metros, equirectangular
+    var k = Math.PI / 180, x = (b[1] - a[1]) * k * Math.cos((a[0] + b[0]) / 2 * k), y = (b[0] - a[0]) * k;
+    return Math.sqrt(x * x + y * y) * 6371000;
+  }
+  function project(p, a, b) { // distancia al segmento a-b y fracción recorrida
+    var k = Math.PI / 180, c = Math.cos(a[0] * k);
+    var ax = a[1] * c, ay = a[0], bx = b[1] * c, by = b[0], px = p[1] * c, py = p[0];
+    var dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+    var t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0;
+    return { d: dist(p, [ay + t * dy, (ax + t * dx) / c]), t: t };
+  }
+
+  // Fecha que el GTFS no cubre: el servicio que más circula ese día de la semana (laborable, miércoles, sábado, domingo).
+  function svcScore(idx, svc, wd) {
+    var days = idx.svcDays[svc] || [0, 0, 0, 0, 0, 0, 0], cls = function (d) { return d === 0 ? 0 : d === 6 ? 6 : 1; }, sc = 10 * days[wd];
+    for (var k = 0; k < 7; k++) if (cls(k) === cls(wd)) sc += days[k];
+    return sc;
+  }
+  function guessServices(idx, date) {
+    var wd = weekday(date), best = null, bestScore = 0;
+    Object.keys(idx.svcDays).forEach(function (svc) { var sc = svcScore(idx, svc, wd); if (sc > bestScore) { best = svc; bestScore = sc; } });
+    return best ? [best] : [];
+  }
+
+  function seqsOf(p) { return p[5] || p[3].map(function (_, i) { return i + 1; }); }
+  // ¿Encajan las paradas del TripUpdate con este patrón? (descarta el sentido o el viaje equivocado)
+  function patternFits(p, stus) {
+    var ids = p[3], seqs = seqsOf(p);
+    for (var k = 0; k < stus.length; k++) {
+      var s = stus[k];
+      if (s.stop_id == null) continue;
+      if (s.stop_sequence != null) { if (ids[seqs.indexOf(s.stop_sequence)] !== s.stop_id) return false; }
+      else if (ids.indexOf(s.stop_id) < 0) return false;
+    }
+    return true;
+  }
+
+  function startOf(td) {
+    var t0 = hms(td.start_time);
+    if (t0 == null) { var mm = /_(\d{1,2}):(\d{2})_/.exec(td.trip_id || ""); if (mm) t0 = (+mm[1]) * 3600 + (+mm[2]) * 60; }
+    return t0;
+  }
+  // Fecha sin cubrir: elige el servicio cuyos horarios casan con más viajes en directo (p. ej. un festivo entre semana).
+  function voteServices(sched, idx, feeds, cfg, today) {
+    var byDate = {}, out = {};
+    ((feeds.tu && feeds.tu.entity) || []).forEach(function (e) {
+      var u = e.trip_update; if (!u || e.is_deleted) return;
+      var td = u.trip || {}, t0 = startOf(td);
+      if (t0 == null || (td.route_id != null && td.route_id !== cfg.route) || td.schedule_relationship === 1) return;
+      var date = td.start_date || (t0 >= 86400 ? addDays(today, -1) : today);
+      if (sched.dates[date]) return;
+      (byDate[date] = byDate[date] || []).push(t0);
+    });
+    Object.keys(byDate).forEach(function (date) {
+      var wd = weekday(date), best = null, bestScore = -1;
+      Object.keys(idx.svcDays).forEach(function (svc) {
+        var list = idx.byRD[svc + "|" + cfg.route + "|" + cfg.dir] || [], hits = 0;
+        byDate[date].forEach(function (t0) { if (list.some(function (c) { return Math.abs(c[0] - t0) <= 120; })) hits++; });
+        var sc = hits * 1000 + svcScore(idx, svc, wd);
+        if (hits && sc > bestScore) { best = svc; bestScore = sc; }
+      });
+      if (best) out[date] = best;
+    });
+    return out;
+  }
+
+  function matchTrip(sched, idx, td, fallbackDate, stus, forced) {
+    var t0 = startOf(td);
+    var route = td.route_id;
+    if (route == null) { var r = /^L(\w+?)_/.exec(td.trip_id || ""); if (r) route = r[1]; }
+    if (t0 == null || route == null) return null;
+    var date = td.start_date || (t0 >= 86400 ? addDays(fallbackDate, -1) : fallbackDate);
+    var dirs = td.direction_id != null ? [td.direction_id] : [0, 1], svcs = sched.dates[date] || (forced && forced[date] ? [forced[date]] : null), cands = [];
+    if (svcs) {
+      // Fecha cubierta por el GTFS: mismo servicio, línea y sentido; hora de salida exacta o a ±2 min.
+      dirs.forEach(function (dir) {
+        svcs.forEach(function (svc) {
+          (idx.byRD[svc + "|" + route + "|" + dir] || []).forEach(function (c) {
+            var dt = Math.abs(c[0] - t0);
+            if (dt <= 120) cands.push({ pi: c[1], t0: c[0], dt: dt, score: 0 });
+          });
+        });
+      });
+    } else {
+      // Fecha no cubierta: el viaje equivalente del servicio que más circula ese día de la semana.
+      var wd = weekday(date);
+      dirs.forEach(function (dir) {
+        (idx.anyKey[route + "|" + dir + "|" + t0] || []).forEach(function (c) { cands.push({ pi: c[1], t0: t0, dt: 0, score: svcScore(idx, c[0], wd) }); });
+      });
+    }
+    cands = cands.filter(function (c) { return patternFits(sched.patterns[c.pi], stus || []); });
+    if (!cands.length) return null;
+    cands.sort(function (a, b) { return a.dt - b.dt || b.score - a.score; });
+    return { pi: cands[0].pi, t0: cands[0].t0, date: date, exact: !!sched.dates[date] };
+  }
+
+  // Paradas anuladas por avisos activos de la línea (p. ej. obras): no cuentan al decir cuántas faltan.
+  function cancelledStops(sched, feeds, cfg, nowMs) {
+    var out = {}, short = String((sched.routes[cfg.route] || [cfg.route])[0]).toUpperCase();
+    ((feeds.al && feeds.al.entity) || []).forEach(function (e) {
+      var a = e.alert; if (!a || e.is_deleted) return;
+      var active = !a.active_period || a.active_period.some(function (r) { return (!r.start || r.start * 1000 <= nowMs) && (!r.end || r.end * 1000 >= nowMs); });
+      if (!active || [1, 4, 6, 9].indexOf(a.effect) < 0) return; // sin servicio, desvío, servicio modificado, parada trasladada
+      var head = a.header_text && a.header_text.translation && a.header_text.translation[0] ? a.header_text.translation[0].text : "";
+      var m = /L[ÍI]NEA\s+([0-9A-Z]+)\b/i.exec(head || "");
+      var mine = (m && m[1].toUpperCase() === short) || (a.informed_entity || []).some(function (ie) { return ie.route_id === cfg.route; });
+      if (!mine) return;
+      (a.informed_entity || []).forEach(function (ie) { if (ie.stop_id && ie.stop_id !== cfg.stop) out[ie.stop_id] = 1; });
+    });
+    return out;
+  }
+
+  function stopsUntil(ids, fromIdx, fromStopId, ti, skip) {
+    var n = 0, prev = fromStopId;
+    for (var k = fromIdx + 1; k <= ti; k++) {
+      if (skip[ids[k]] || ids[k] === prev) continue;
+      n++; prev = ids[k];
+    }
+    return n;
+  }
+
+  // cfg: {route, dir, stop}; feeds: {tu, vp, al} decodificados; devuelve llegadas ordenadas.
+  function computeArrivals(sched, idx, feeds, cfg, nowMs) {
+    var today = localDate(nowMs), out = [], seen = {};
+    var skip = cancelledStops(sched, feeds, cfg, nowMs), tgt = sched.stops[cfg.stop];
+    var forced = voteServices(sched, idx, feeds, cfg, today), tuTs = feeds.tu && feeds.tu.header && feeds.tu.header.timestamp;
+    var vpByTrip = {}, vpByVeh = {};
+    ((feeds.vp && feeds.vp.entity) || []).forEach(function (e) {
+      var v = e.vehicle; if (!v || e.is_deleted) return;
+      if (v.trip && v.trip.trip_id) vpByTrip[v.trip.trip_id + "|" + (v.trip.start_date || "")] = v;
+      if (v.vehicle && v.vehicle.id) vpByVeh[v.vehicle.id] = v;
+    });
+    function vpFor(td, u) {
+      var v = vpByTrip[(td.trip_id || "") + "|" + (td.start_date || "")] || vpByTrip[(td.trip_id || "") + "|"];
+      // Por vehículo solo si la posición no dice qué viaje hace (si no, puede ser el viaje anterior de ese bus).
+      if (!v && u.vehicle && vpByVeh[u.vehicle.id] && !(vpByVeh[u.vehicle.id].trip && vpByVeh[u.vehicle.id].trip.trip_id)) v = vpByVeh[u.vehicle.id];
+      // Solo posiciones recientes (menos de 3 min).
+      if (!v || !v.position || !v.position.latitude || (v.timestamp && v.timestamp * 1000 < nowMs - 180e3)) return null;
+      return v;
+    }
+    function ev(s, preferDep) {
+      var a = s.arrival, d = s.departure, has = function (x) { return x && (x.delay != null || x.time != null); };
+      return preferDep ? (has(d) ? d : has(a) ? a : null) : (has(a) ? a : has(d) ? d : null);
+    }
+
+    ((feeds.tu && feeds.tu.entity) || []).forEach(function (e) {
+      var u = e.trip_update; if (!u || e.is_deleted) return;
+      var td = u.trip || {}, raw = u.stop_time_update || [];
+      if (td.route_id != null && td.route_id !== cfg.route) return;
+      if (td.direction_id != null && td.direction_id !== cfg.dir) return;
+      var m = td.schedule_relationship === 1 ? null : matchTrip(sched, idx, td, today, raw, forced);
+      if (!m) {
+        // Viaje añadido (refuerzo) o que no está en el horario: solo si trae hora absoluta en tu parada.
+        if (td.route_id !== cfg.route && !(td.trip_id || "").match(new RegExp("^L" + cfg.route + "_"))) return;
+        raw.forEach(function (s) {
+          if (s.stop_id !== cfg.stop || s.schedule_relationship === 1) return;
+          var x = ev(s, false);
+          if (x && x.time != null) out.push({ key: "added|" + td.trip_id, trip: td.trip_id, schedMs: x.time * 1000, predMs: x.time * 1000, added: true, source: "rt", exact: true });
+        });
+        return;
+      }
+      var p = sched.patterns[m.pi];
+      if (p[0] !== cfg.route || p[1] !== cfg.dir) return;
+      var key = m.date + "|" + m.t0;
+      seen[key] = 1;
+      var ids = p[3], offs = p[4], seqs = seqsOf(p);
+      // Normaliza las actualizaciones: secuencia (o la deduce por stop_id) y orden.
+      var last = -1, stus = [];
+      raw.forEach(function (s) {
+        var seq = s.stop_sequence;
+        if (seq == null && s.stop_id != null) {
+          for (var i = last + 1; i < ids.length; i++) if (ids[i] === s.stop_id) { seq = seqs[i]; break; }
+        }
+        if (seq == null) return;
+        last = seqs.indexOf(seq);
+        stus.push({ seq: seq, s: s });
+      });
+      stus.sort(function (a, b) { return a.seq - b.seq; });
+      var firstSeq = stus.length ? stus[0].seq : null;
+      var fi = firstSeq != null ? Math.max(0, seqs.indexOf(firstSeq)) : 0;
+      var base = serviceBaseMs(m.date), v = vpFor(td, u);
+      var ti = -1;
+      for (var i = 0; i < ids.length; i++) if (ids[i] === cfg.stop && (firstSeq == null || seqs[i] >= firstSeq)) { ti = i; break; }
+      if (ti < 0) {
+        // El TripUpdate ya quitó tu parada, pero el GPS dice que el bus está ahí mismo: sigue siendo «Llegando».
+        var li = -1;
+        for (i = 0; i < fi; i++) if (ids[i] === cfg.stop) li = i;
+        var uTs = u.timestamp || tuTs;
+        if (li >= 0 && li === fi - 1 && v && tgt && (!v.timestamp || !uTs || v.timestamp >= uTs - 30) &&
+            dist([v.position.latitude, v.position.longitude], [tgt[1], tgt[2]]) < 50) {
+          out.push({ key: key, trip: td.trip_id, schedMs: base + (m.t0 + offs[li]) * 1000, predMs: nowMs, source: "rt", exact: m.exact,
+            pos: { ms: nowMs, ahead: false, stopsLeft: 0, near: tgt[0], atStop: true, arriving: true } });
+        }
+        return;
+      }
+      var schedMs = base + (m.t0 + offs[ti]) * 1000;
+      if (td.schedule_relationship === 3) { out.push({ key: key, trip: td.trip_id, schedMs: schedMs, predMs: null, canceled: true, source: "rt", exact: m.exact }); return; }
+
+      var predMs = null, skipped = false, at = null, prevs = [];
+      for (i = 0; i < stus.length; i++) { if (stus[i].seq === seqs[ti]) at = stus[i].s; else if (stus[i].seq < seqs[ti]) prevs.push(stus[i]); }
+      if (at && at.schedule_relationship === 1) skipped = true;
+      var atScheduled = !!at && (at.schedule_relationship == null || at.schedule_relationship === 0);
+      var x = atScheduled ? ev(at, false) : null;
+      if (x) predMs = x.time != null ? x.time * 1000 : schedMs + x.delay * 1000;
+      else if (!at || at.schedule_relationship !== 2) {
+        // Propagación GTFS-RT: retraso de la última parada anterior con datos (las SKIPPED no cuentan; NO_DATA corta).
+        for (i = prevs.length - 1; i >= 0; i--) {
+          var ps = prevs[i].s;
+          if (ps.schedule_relationship === 1) continue;
+          if (ps.schedule_relationship === 2) break;
+          var y = ev(ps, true);
+          if (!y) continue;
+          var d = y.delay;
+          if (d == null) d = y.time - (base / 1000 + m.t0 + offs[seqs.indexOf(prevs[i].seq)]);
+          predMs = schedMs + d * 1000;
+          break;
+        }
+        if (predMs == null && !prevs.length && !at && u.delay != null) predMs = schedMs + u.delay * 1000;
+      }
+
+      // Posición GPS: dónde va y estimación propia según el horario desde su posición.
+      var pos = null;
+      if (v) {
+        var P = [v.position.latitude, v.position.longitude], best = null, first = null;
+        for (i = Math.max(0, fi - 1); i <= ti && i + 1 < ids.length; i++) {
+          var a = sched.stops[ids[i]], b = sched.stops[ids[i + 1]];
+          if (!a || !b) continue;
+          var pr = project(P, [a[1], a[2]], [b[1], b[2]]), c = { d: pr.d, i: i, t: pr.t };
+          if (!first && pr.d <= 60) first = c;
+          if (!best || pr.d < best.d) best = c;
+        }
+        best = first || best;
+        if (best && best.d <= 150) {
+          var tgtDist = tgt ? dist(P, [tgt[1], tgt[2]]) : 1e9;
+          if (best.i === ti && best.t > 0 && tgtDist > 60 && best.d <= 40) return; // el GPS dice que ya ha pasado tu parada
+          if (best.i === ti) best = ti > 0 ? { d: best.d, i: ti - 1, t: 1 } : { d: best.d, i: 0, t: 0 };
+          var here = best.i, nearIdx = best.t > 0.5 ? here + 1 : here;
+          var nearStop = sched.stops[ids[nearIdx]];
+          var atStop = !!nearStop && dist(P, [nearStop[1], nearStop[2]]) < 50;
+          var schedHere = offs[here] + best.t * ((offs[here + 1] != null ? offs[here + 1] : offs[here]) - offs[here]);
+          var posMs = (v.timestamp ? v.timestamp * 1000 : nowMs) + (offs[ti] - schedHere) * 1000;
+          var left = atStop ? stopsUntil(ids, nearIdx, ids[nearIdx], ti, skip) : nearIdx === ti ? 0 : stopsUntil(ids, here, ids[here], ti, skip);
+          pos = {
+            ms: posMs,
+            // Solo si el GPS lo sitúa más allá de lo que cree la predicción y además da una hora anterior.
+            ahead: firstSeq != null && (here > fi || (here === fi && best.t > 0.5)) && predMs != null && posMs < predMs - 60e3,
+            stopsLeft: left,
+            near: nearStop ? nearStop[0] : "",
+            atStop: atStop,
+            arriving: left === 0
+          };
+        }
+      }
+      out.push({
+        key: key, trip: td.trip_id, vehicle: (u.vehicle && u.vehicle.id) || (v && v.vehicle && v.vehicle.id) || "",
+        schedMs: schedMs, predMs: predMs, pos: pos, skipped: skipped, source: "rt", exact: m.exact, headsign: p[2]
+      });
+    });
+    // Viajes del horario sin datos en tiempo real (los próximos 3 h).
+    [addDays(today, -1), today].forEach(function (date) {
+      var base = serviceBaseMs(date), svcs = sched.dates[date], approx = false;
+      if (!svcs) { svcs = forced[date] ? [forced[date]] : guessServices(idx, date); approx = true; }
+      svcs.forEach(function (svc) {
+        (sched.trips[svc] || []).forEach(function (tr) {
+          var p = sched.patterns[tr[0]];
+          if (p[0] !== cfg.route || p[1] !== cfg.dir || seen[date + "|" + tr[1]]) return;
+          var ti = p[3].indexOf(cfg.stop);
+          if (ti < 0) return;
+          var ms = base + (tr[1] + p[4][ti]) * 1000;
+          if (ms < nowMs - 60e3 || ms > nowMs + 3 * 3600e3) return;
+          seen[date + "|" + tr[1]] = 1;
+          out.push({ key: date + "|" + tr[1], schedMs: ms, predMs: null, source: "sched", started: base + tr[1] * 1000 <= nowMs, headsign: p[2], exact: !approx });
+        });
+      });
+    });
+    out.forEach(function (a) { a.etaMs = a.canceled ? null : (a.predMs != null ? a.predMs : a.schedMs); });
+    return out
+      .filter(function (a) { return a.canceled ? a.schedMs > nowMs - 60e3 : a.etaMs > nowMs - 60e3; })
+      .sort(function (a, b) { return (a.etaMs != null ? a.etaMs : a.schedMs) - (b.etaMs != null ? b.etaMs : b.schedMs); });
+  }
+
+  function alertsFor(sched, feeds, cfg, nowMs) {
+    var stopSet = {};
+    stopSet[cfg.stop] = 1;
+    var tr = function (ts) { return ts && ts.translation && ts.translation.length ? (ts.translation.filter(function (t) { return /^es/i.test(t.language || "es"); })[0] || ts.translation[0]).text : ""; };
+    return ((feeds.al && feeds.al.entity) || []).filter(function (e) { return !e.is_deleted; }).map(function (e) { return e.alert; }).filter(function (a) {
+      if (!a) return false;
+      var active = !a.active_period || a.active_period.some(function (r) { return (!r.start || r.start * 1000 <= nowMs) && (!r.end || r.end * 1000 >= nowMs); });
+      // Solo avisos de tu parada, o de tu línea entera (sin paradas concretas).
+      var hits = (a.informed_entity || []).some(function (ie) { return (ie.stop_id && stopSet[ie.stop_id]) || (!ie.stop_id && (ie.route_id === cfg.route || (ie.trip && ie.trip.route_id === cfg.route))); });
+      return active && hits;
+    }).map(function (a) { return { header: tr(a.header_text), text: tr(a.description_text) }; }).filter(function (a) {
+      // Avisos que solo nombran paradas compartidas: descarta los que dicen ser de otra línea («LÍNEA 3 - ...»).
+      var m = /L[ÍI]NEA\s+([0-9A-Z]+)\b/i.exec(a.header);
+      var short = (sched.routes[cfg.route] || [cfg.route])[0];
+      return !m || m[1].toUpperCase() === String(short).toUpperCase() || m[1].toUpperCase() === String(cfg.route).toUpperCase();
+    });
+  }
+
+  return {
+    TZ: TZ, parseCSV: parseCSV, hms: hms, deriveSchedule: deriveSchedule, filterSchedule: filterSchedule, indexSchedule: indexSchedule,
+    decodeFeed: decodeFeed, serviceBaseMs: serviceBaseMs, localDate: localDate, addDays: addDays,
+    computeArrivals: computeArrivals, alertsFor: alertsFor, matchTrip: matchTrip
+  };
+})();
+if (typeof module !== "undefined") module.exports = BusCore;
+</script>
+<script>(function () {
+  "use strict";
+  var C = BusCore;
+  var CFG = { route: "4", dir: 0, stop: "15956" }; // L4 → Loranca, parada 15956
+  var UID = "c-5cfcd2d1";
+  var FEEDS = {
+    tu: "https://api.control.optibus.co/opendata/v1/gtfs-rt/trip-updates?uid=" + UID,
+    vp: "https://api.control.optibus.co/opendata/v1/gtfs-rt/vehicle-positions?uid=" + UID,
+    al: "https://api.control.optibus.co/opendata/v1/gtfs-rt/alerts?uid=" + UID
+  };
+  var NAP_URL = "https://nap.transportes.gob.es/ConjuntoDato/Detail/1628";
+  var JSZIP_URL = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+  var REFRESH_MS = 30000;
+
+  // Parámetros de prueba: ?src=local lee tu.pb/vp.pb/al.pb junto al HTML; ?now=<ms> fija el reloj.
+  var qs = new URLSearchParams(location.search);
+  if (qs.get("src") === "local") FEEDS = { tu: "tu.pb", vp: "vp.pb", al: "al.pb" };
+  var clockOffset = qs.get("now") ? +qs.get("now") - Date.now() : 0;
+  function now() { return Date.now() + clockOffset; }
+
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  };
+
+  // Horario: el incluido en la página o uno más nuevo que hayas cargado.
+  var EMBEDDED = window.BUS_SCHEDULE;
+  function validSched(x) {
+    return !!(x && x.v === 1 && x.feed && typeof x.feed.end === "string" && Array.isArray(x.patterns) && x.patterns.length &&
+      x.trips && typeof x.trips === "object" && x.dates && typeof x.dates === "object" && x.stops && typeof x.stops === "object");
+  }
+  var sched = EMBEDDED, idx = C.indexSchedule(EMBEDDED);
+  try {
+    var st = JSON.parse(store.get("bus.sched") || "null");
+    if (validSched(st) && st.feed.end > EMBEDDED.feed.end) { var stIdx = C.indexSchedule(st); sched = st; idx = stIdx; }
+  } catch (e) { /* horario guardado inservible: se usa el incluido */ }
+
+  var state = { feeds: null, fetchedAt: null, error: null, loading: false, loadingSince: 0, gtfsMsg: "" };
+  var $ = function (id) { return document.getElementById(id); };
+
+  var fmtHM = new Intl.DateTimeFormat("es-ES", { timeZone: C.TZ, hour: "2-digit", minute: "2-digit" });
+  var fmtHMS = new Intl.DateTimeFormat("es-ES", { timeZone: C.TZ, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  function hm(ms) { return fmtHM.format(new Date(ms)); }
+  function hmsTxt(ms) { return fmtHMS.format(new Date(ms)); }
+  function ymdTxt(d) { return d ? d.slice(6, 8) + "/" + d.slice(4, 6) + "/" + d.slice(0, 4) : "?"; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function minsLeft(ms) {
+    var diff = ms - now();
+    if (diff <= 30e3) return null; // llegando
+    // Minutos contados como en el reloj, para que «N min» cuadre con «Pasa a las HH:MM».
+    return Math.max(1, Math.floor(ms / 60000) - Math.floor(now() / 60000));
+  }
+
+  function statusOf(a) {
+    if (a.canceled) return { cls: "bad", txt: "Cancelado" };
+    if (a.skipped) return { cls: "bad", txt: "Hoy no para aquí" };
+    if (a.added) return { cls: "ok", txt: "Bus de refuerzo" };
+    if (a.source === "sched") return { cls: "muted", txt: a.started ? "Sin datos en directo" : "Según horario" };
+    if (a.predMs == null) return { cls: "muted", txt: "Sin predicción" };
+    var d = Math.round((a.predMs - a.schedMs) / 60000);
+    if (d === 0) return { cls: "ok", txt: "En hora" };
+    return d < 0 ? { cls: "ok", txt: -d + " min adelantado" } : { cls: "late", txt: d + " min de retraso" };
+  }
+  function whereOf(a) {
+    var p = a.pos;
+    if (!p) return "";
+    if (p.stopsLeft === 0) return p.atStop ? "Está en tu parada" : "Llegando a tu parada";
+    return (p.atStop ? "En " : "Cerca de ") + esc(p.near) + " · " + (p.stopsLeft === 1 ? "1 parada" : p.stopsLeft + " paradas") + " hasta la tuya";
+  }
+
+  function render() {
+    var t = now();
+    var all = C.computeArrivals(sched, idx, state.feeds || {}, CFG, t);
+    var live = all.filter(function (x) { return !x.canceled && !x.skipped; });
+    var hero = $("hero"), next = $("next");
+    // Buses cancelados o que hoy no paran aquí, antes del próximo que sí pasa: una nota, sin cuenta atrás.
+    var gone = all.filter(function (x) { return (x.canceled || x.skipped) && (!live[0] || x.schedMs <= live[0].etaMs); });
+    var note = gone.length ? '<p class="hero-note">' + gone.map(function (x) {
+      return "El de las " + hm(x.schedMs) + (x.canceled ? " está cancelado" : " hoy no para en tu parada");
+    }).join(". ") + ".</p>" : "";
+    if (!live.length) {
+      hero.className = "hero muted";
+      hero.innerHTML = note + '<p class="hero-none">' + (state.feeds ? "No pasa ningún bus en las próximas 3 horas." : state.error ? "Sin datos en directo y sin horario para hoy." : "Cargando…") + "</p>";
+      next.textContent = "";
+      document.title = "L4 · 15956";
+    } else {
+      var a = live[0], s = statusOf(a), m = minsLeft(a.etaMs), schedOnly = a.source === "sched";
+      var gps = "";
+      if (a.pos && a.pos.ahead && a.predMs != null && a.pos.ms < a.predMs - 60e3) {
+        gps = '<p class="hero-gps">Según el GPS va más adelantado de lo que dice la predicción: podría pasar hacia las <strong>' + hm(Math.max(a.pos.ms, t)) + "</strong>.</p>";
+      }
+      hero.className = "hero " + s.cls;
+      hero.innerHTML = note +
+        '<p class="hero-count">' + (m == null ? '<span class="num small">' + (schedOnly ? "Ahora" : "Llegando") + "</span>" : '<span class="num">' + m + '</span><span class="unit">min</span>') + "</p>" +
+        '<p class="hero-time">' + (m == null && a.pos && a.pos.stopsLeft === 0 && a.pos.atStop ? "Ya está aquí" : (schedOnly ? "Según el horario pasa a las <strong>" : "Pasa a las <strong>") + hm(a.etaMs) + "</strong>") +
+        ' <span class="chip ' + s.cls + '">' + esc(s.txt) + "</span></p>" +
+        (whereOf(a) ? '<p class="hero-where">' + whereOf(a) + "</p>" : "") + gps;
+      var b = live[1];
+      if (b) {
+        var mb = minsLeft(b.etaMs);
+        var gap = all.filter(function (x) { return (x.canceled || x.skipped) && x.schedMs > a.etaMs && x.schedMs <= b.etaMs; });
+        next.innerHTML = "Después: <strong>" + hm(b.etaMs) + "</strong>" + (mb != null ? " · " + mb + " min" : "") +
+          (b.source === "sched" ? " · según horario" : "") + (b.added ? " · refuerzo" : "") +
+          gap.map(function (x) { return ' <span class="gap">(el de las ' + hm(x.schedMs) + (x.canceled ? " está cancelado" : " no para aquí") + ")</span>"; }).join("");
+      } else next.textContent = "";
+      document.title = (m == null ? (schedOnly ? "Ahora (horario)" : "Llegando") : m + " min") + " · L4 Loranca";
+    }
+
+    var al = state.feeds ? C.alertsFor(sched, state.feeds, CFG, t) : [];
+    $("alerts").hidden = !al.length;
+    $("alerts").innerHTML = al.map(function (x) {
+      return '<div class="alert"><p class="alert-h">' + esc(x.header) + "</p>" + (x.text ? '<p class="alert-t">' + esc(x.text) + "</p>" : "") + "</div>";
+    }).join("");
+
+    var parts = [];
+    if (state.loading) parts.push("Actualizando…");
+    if (state.feeds && state.feeds.tu && state.feeds.tu.header && state.feeds.tu.header.timestamp) {
+      var ts = state.feeds.tu.header.timestamp * 1000, age = Math.round((t - ts) / 1000);
+      parts.push("Datos de las " + hmsTxt(ts) + (age > 180 ? ' <span class="stale">(' + (age < 3600 ? "hace " + Math.round(age / 60) + " min" : "hace más de una hora") + ", puede estar desfasado)</span>" : ""));
+    }
+    if (state.feeds && state.fetchedAt && !(state.feeds.tu && state.feeds.tu.header && state.feeds.tu.header.timestamp)) parts.push("Datos recibidos a las " + hmsTxt(state.fetchedAt + clockOffset));
+    $("status").innerHTML = parts.join(" · ") || (state.error ? "Sin datos en directo" : "Descargando datos en directo…");
+    $("error").hidden = !state.error;
+    if (state.error) {
+      var e = state.error, why = e && e.name === "AbortError" ? "El servidor de datos en directo no responde."
+        : /servidor respondió|respuesta vacía|protobuf|cable/.test(String(e && e.message)) ? "El servidor de EMT no está dando datos en directo ahora mismo."
+        : "No he podido descargar los datos en directo. Comprueba la conexión.";
+      $("error").textContent = why + " " + (state.feeds ? "Muestro los últimos que tengo." : "Mientras tanto ves la hora del horario.");
+    }
+
+    var covered = !!sched.dates[C.localDate(t)];
+    $("expired").hidden = covered;
+    $("valid").textContent = ymdTxt(sched.feed.end);
+    $("gtfs-msg").textContent = state.gtfsMsg;
+  }
+
+  function getFeed(url) {
+    // Corta a los 15 s: con mala cobertura una petición colgada no debe bloquear las siguientes.
+    var ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timer = ac ? setTimeout(function () { ac.abort(); }, 15000) : null;
+    return fetch(url, ac ? { cache: "no-store", signal: ac.signal } : { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("el servidor respondió " + r.status);
+      return r.arrayBuffer();
+    }).then(function (b) {
+      var feed = C.decodeFeed(new Uint8Array(b));
+      if (!feed.header) throw new Error("respuesta vacía");
+      return feed;
+    }).then(function (f) { clearTimeout(timer); return f; }, function (e) { clearTimeout(timer); throw e; });
+  }
+  function refresh() {
+    if (state.loading && Date.now() - state.loadingSince < 20000) return;
+    state.loading = true; state.loadingSince = Date.now(); render();
+    Promise.all([getFeed(FEEDS.tu), getFeed(FEEDS.vp).catch(function () { return null; }), getFeed(FEEDS.al).catch(function () { return null; })])
+      .then(function (r) { state.feeds = { tu: r[0], vp: r[1], al: r[2] }; state.fetchedAt = Date.now(); state.error = null; })
+      .catch(function (e) { state.error = e; })
+      .then(function () { state.loading = false; render(); });
+  }
+
+  // Solo hace falta cuando caduque el horario incluido.
+  function loadGtfs(file) {
+    state.gtfsMsg = "Leyendo " + file.name + "…"; render();
+    new Promise(function (ok, ko) {
+      if (window.JSZip) return ok();
+      var s = document.createElement("script"); s.src = JSZIP_URL; s.onload = ok;
+      s.onerror = function () { ko(new Error("no se pudo cargar el lector de zip (¿sin conexión?)")); };
+      document.head.appendChild(s);
+    }).then(function () { return JSZip.loadAsync(file); }).then(function (zip) {
+      var names = ["routes.txt", "stops.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt", "feed_info.txt"], texts = {};
+      return Promise.all(names.map(function (n) {
+        var f = zip.file(n) || zip.file(new RegExp("(^|/)" + n.replace(".", "\\.") + "$"))[0];
+        return f ? f.async("string").then(function (t) { texts[n] = t; }) : null;
+      })).then(function () { return C.filterSchedule(C.deriveSchedule(function (n) { return texts[n] == null ? null : texts[n]; }), CFG); });
+    }).then(function (s) {
+      if (!s.patterns.length) throw new Error("no trae la L4 por la parada 15956");
+      if (s.feed.end <= sched.feed.end) {
+        state.gtfsMsg = "Ese GTFS no es más nuevo que el que ya tengo (válido hasta el " + ymdTxt(sched.feed.end) + "). Descarga el último del NAP.";
+        render(); return;
+      }
+      sched = s; idx = C.indexSchedule(sched);
+      var saved = store.set("bus.sched", JSON.stringify(s));
+      state.gtfsMsg = "Horario actualizado: válido hasta el " + ymdTxt(s.feed.end) + "." + (saved ? "" : " Este navegador no deja guardarlo y tendrás que cargarlo otra vez.");
+      render();
+    }).catch(function (e) {
+      var why = /zip|signature|central directory|corrupt/i.test(String(e && e.message)) ? "no parece un .zip de GTFS" : (e && e.message) || "error desconocido";
+      state.gtfsMsg = "No he podido leer ese archivo: " + why + "."; render();
+    });
+  }
+
+  $("btn-refresh").addEventListener("click", refresh);
+  $("gtfs-file").addEventListener("change", function (e) { if (e.target.files[0]) loadGtfs(e.target.files[0]); e.target.value = ""; });
+  $("nap-link").href = NAP_URL;
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && (!state.fetchedAt || Date.now() - state.fetchedAt > 10e3)) refresh();
+  });
+
+  render();
+  refresh();
+  setInterval(function () { if (document.visibilityState !== "hidden") refresh(); }, REFRESH_MS);
+  setInterval(render, 1000);
+})();
+</script>
+</body>
+</html>

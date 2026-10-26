@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#135FCB">
+<title>L4 Loranca · 15956</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Una sola pantalla, como el panel de la marquesina: el número de minutos manda. */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --ink: #101a2b;
+  --muted: #5a667c;
+  --rule: #d8deea;
+  --accent: #135fcb;
+  --ok: #17803f;
+  --late: #a8590a;
+  --bad: #b42318;
+  --alert-bg: #fff4e5;
+  --alert-ink: #6b3a00;
+  --font-display: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b111c; --surface: #131c2c; --ink: #e9eef8; --muted: #9aa6bd; --rule: #263248;
+    --accent: #5d9bff; --ok: #4cc27a; --late: #f0a94b; --bad: #ff7a6b; --alert-bg: #2a1f10; --alert-ink: #f6d3a2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b111c; --surface: #131c2c; --ink: #e9eef8; --muted: #9aa6bd; --rule: #263248;
+  --accent: #5d9bff; --ok: #4cc27a; --late: #f0a94b; --bad: #ff7a6b; --alert-bg: #2a1f10; --alert-ink: #f6d3a2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 17px/1.45 var(--font-body);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.wrap {
+  max-width: 30rem; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 28px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.top { display: flex; align-items: center; gap: 14px; }
+.badge {
+  flex: none; width: 3.4rem; height: 3.4rem; border-radius: 10px;
+  display: grid; place-items: center; background: #135fcb; color: #fff;
+  font: 700 1.9rem/1 var(--font-display);
+}
+.top-text { min-width: 0; }
+.dest { margin: 0; font: 700 1.75rem/1.05 var(--font-display); }
+.dest span { color: var(--muted); font-weight: 600; }
+.stop { margin: 2px 0 0; color: var(--muted); font-size: .95rem; }
+.stop b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.hero {
+  background: var(--surface); border: 1px solid var(--rule); border-top: 6px solid var(--accent); border-radius: 16px;
+  padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 8px;
+}
+.hero.ok { border-top-color: var(--ok); }
+.hero.late { border-top-color: var(--late); }
+.hero.bad { border-top-color: var(--bad); }
+.hero.muted { border-top-color: var(--muted); }
+.hero p { margin: 0; }
+.hero-count { display: flex; align-items: baseline; gap: 8px; font-family: var(--font-display); line-height: .9; }
+.hero-count .num { font-size: clamp(5rem, 30vw, 8rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.hero-count .num.small { font-size: clamp(2.6rem, 13vw, 4rem); overflow-wrap: anywhere; }
+.hero-note { color: var(--bad); font-weight: 600; font-size: .95rem; }
+.hero-count .unit { font-size: 2.2rem; font-weight: 600; color: var(--muted); }
+.hero-time { font-size: 1.15rem; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.hero-time strong { font-variant-numeric: tabular-nums; }
+.hero-gps { color: var(--muted); font-size: .95rem; border-left: 3px solid var(--accent); padding-left: 10px; }
+.hero-none { color: var(--muted); font-size: 1.05rem; padding: 14px 0; }
+.chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .85rem; font-weight: 600; border: 1px solid currentColor; white-space: nowrap; }
+.chip.ok { color: var(--ok); }
+.chip.late { color: var(--late); }
+.chip.bad { color: var(--bad); }
+.chip.muted { color: var(--muted); }
+.next { margin: 0; padding: 0 4px; color: var(--muted); }
+.next:empty { display: none; }
+.next strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.alerts { display: flex; flex-direction: column; gap: 8px; }
+.alert { background: var(--alert-bg); color: var(--alert-ink); border-radius: 12px; padding: 10px 14px; }
+.alert p { margin: 0; }
+.alert, .hero, .error, .expired, .next { overflow-wrap: anywhere; }
+.gap { color: var(--bad); }
+.alert-h { font-weight: 600; }
+.alert-t { font-size: .92rem; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.status { color: var(--muted); font-size: .85rem; margin: 0; min-width: 0; flex: 1 1 12rem; }
+.stale { color: var(--late); font-weight: 600; }
+.error, .expired { margin: 0; border-radius: 12px; padding: 10px 14px; font-size: .92rem; background: var(--surface); border: 1px solid var(--bad); }
+.expired { border-color: var(--late); display: flex; flex-direction: column; gap: 8px; }
+.expired p { margin: 0; }
+button, .file-btn {
+  font: 600 .95rem/1 var(--font-body); color: var(--accent); background: transparent;
+  border: 1.5px solid var(--accent); border-radius: 10px; padding: 10px 14px; cursor: pointer;
+}
+.file-btn { position: relative; overflow: hidden; align-self: flex-start; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+button:focus-visible, a:focus-visible, .file-btn:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+.msg { color: var(--muted); }
+.msg:empty { display: none; }
+.foot { color: var(--muted); font-size: .8rem; margin: 0; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div class="badge" aria-hidden="true">L4</div>
+    <div class="top-text">
+      <h1 class="dest"><span>→</span> Loranca</h1>
+      <p class="stop">Parada <b>15956</b> · Avenida Regiones - Nazaret</p>
+    </div>
+  </header>
+
+  <section class="hero" id="hero"><p class="hero-none">Cargando…</p></section>
+  <p class="next" id="next"></p>
+
+  <section class="alerts" id="alerts" hidden aria-label="Avisos de tu parada"></section>
+  <p class="error" id="error" hidden></p>
+
+  <div class="expired" id="expired" hidden>
+    <p>El horario de esta página caducó el <span id="valid"></span>. Las horas son aproximadas hasta que cargues el nuevo: descarga el GTFS-ZIP de EMTF en el <a id="nap-link" target="_blank" rel="noopener">NAP</a> y elígelo aquí.</p>
+    <label class="file-btn">Cargar GTFS (.zip)<input type="file" id="gtfs-file" accept=".zip,application/zip"></label>
+  </div>
+  <p class="msg" id="gtfs-msg" aria-live="polite"></p>
+
+  <div class="bar">
+    <p class="status" id="status">Descargando datos en directo…</p>
+    <button type="button" id="btn-refresh">Actualizar</button>
+  </div>
+  <p class="foot">Tiempo real de EMT Fuenlabrada (NAP · Optibus). Se actualiza solo cada 30 s.</p>
+</main>
+<script>/*DATA*/</script>
+<script>/*CORE*/</script>
+<script>/*APP*/</script>
+</body>
+</html>
