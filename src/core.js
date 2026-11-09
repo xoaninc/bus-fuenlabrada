@@ -371,9 +371,15 @@ var BusCore = (function () {
         (idx.anyKey[route + "|" + dir + "|" + t0] || []).forEach(function (c) { cands.push({ pi: c[1], t0: t0, dt: 0, score: svcScore(idx, c[0], wd) }); });
       });
     }
-    cands = cands.filter(function (c) { return patternFits(sched.patterns[c.pi], stus || [], skip); });
+    cands = cands.filter(function (c) {
+      var al = alignStus(sched.patterns[c.pi], stus || [], skip);
+      if (!al) return false;
+      // Dos viajes con la misma hora de salida (p. ej. L2 circular y refuerzo de las 16:53): gana el que casa por stop_sequence.
+      c.renum = al.some(function (x) { return x.renum; }) ? 1 : 0;
+      return true;
+    });
     if (!cands.length) return null;
-    cands.sort(function (a, b) { return a.dt - b.dt || b.score - a.score; });
+    cands.sort(function (a, b) { return a.dt - b.dt || a.renum - b.renum || b.score - a.score; });
     return { pi: cands[0].pi, t0: cands[0].t0, date: date, exact: !!sched.dates[date] };
   }
 
@@ -406,6 +412,8 @@ var BusCore = (function () {
   function computeArrivals(sched, idx, feeds, cfg, nowMs) {
     var today = localDate(nowMs), out = [], seen = {};
     var skip = cancelledStops(sched, feeds, cfg, nowMs), tgt = sched.stops[cfg.stop];
+    // Página de paradas: si un aviso de la línea anula tu parada (obras), el bus no para en ella.
+    var tgtCut = !!cfg.boardingOnly && !!cancelledStops(sched, feeds, { route: cfg.route, stop: null }, nowMs)[cfg.stop];
     var forced = voteServices(sched, idx, feeds, cfg, today), tuTs = feeds.tu && feeds.tu.header && feeds.tu.header.timestamp;
     var vpByTrip = {}, vpByVeh = {};
     ((feeds.vp && feeds.vp.entity) || []).forEach(function (e) {
@@ -444,7 +452,7 @@ var BusCore = (function () {
       }
       var p = sched.patterns[m.pi];
       if (p[0] !== cfg.route || p[1] !== cfg.dir) return;
-      var key = m.date + "|" + m.t0;
+      var key = m.date + "|" + m.t0 + "|" + m.pi;
       seen[key] = 1;
       var ids = p[3], offs = p[4], seqs = seqsOf(p);
       // Normaliza las actualizaciones a la numeración del patrón del horario.
@@ -480,6 +488,7 @@ var BusCore = (function () {
       var predMs = null, skipped = false, at = null, prevs = [];
       for (i = 0; i < stus.length; i++) { if (stus[i].seq === seqs[ti]) at = stus[i].s; else if (stus[i].seq < seqs[ti]) prevs.push(stus[i]); }
       if (at && at.schedule_relationship === 1) skipped = true;
+      if (tgtCut || (cfg.boardingOnly && gone[ti])) skipped = true;
       var atScheduled = !!at && (at.schedule_relationship == null || at.schedule_relationship === 0);
       var x = atScheduled ? ev(at, false) : null;
       if (x) predMs = x.time != null ? x.time * 1000 : schedMs + x.delay * 1000;
@@ -544,13 +553,14 @@ var BusCore = (function () {
       svcs.forEach(function (svc) {
         (sched.trips[svc] || []).forEach(function (tr) {
           var p = sched.patterns[tr[0]];
-          if (p[0] !== cfg.route || p[1] !== cfg.dir || seen[date + "|" + tr[1]]) return;
+          var sk = date + "|" + tr[1] + "|" + tr[0];
+          if (p[0] !== cfg.route || p[1] !== cfg.dir || seen[sk]) return;
           var ti = p[3].indexOf(cfg.stop);
           if (ti < 0 || (cfg.boardingOnly && ti === p[3].length - 1)) return;
           var ms = base + (tr[1] + p[4][ti]) * 1000;
           if (ms < nowMs - 60e3 || ms > nowMs + 3 * 3600e3) return;
-          seen[date + "|" + tr[1]] = 1;
-          out.push({ key: date + "|" + tr[1], schedMs: ms, predMs: null, source: "sched", started: base + tr[1] * 1000 <= nowMs, headsign: p[2], exact: !approx });
+          seen[sk] = 1;
+          out.push({ key: sk, schedMs: ms, predMs: null, source: "sched", started: base + tr[1] * 1000 <= nowMs, headsign: p[2], exact: !approx, skipped: tgtCut });
         });
       });
     });

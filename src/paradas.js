@@ -33,7 +33,8 @@
     ids.forEach(function (s, i) {
       if (i === ids.length - 1 && ids[0] !== s) return;
       var k = p[0] + "|" + p[1];
-      (combos[s] = combos[s] || {})[k] = { route: p[0], dir: p[1] };
+      var c = (combos[s] = combos[s] || {})[k] = combos[s][k] || { route: p[0], dir: p[1], to: {} };
+      if (p[2]) c.to[title(p[2])] = 1;
     });
   });
   function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim(); }
@@ -47,6 +48,12 @@
     var r = {};
     Object.keys(combos[id] || {}).forEach(function (k) { r[combos[id][k].route] = 1; });
     return Object.keys(r).sort(function (a, b) { return (parseFloat(a) || 999) - (parseFloat(b) || 999); });
+  }
+  // Destinos de los buses que salen de la parada: distingue las dos aceras con el mismo nombre (15956 → Loranca, 15957 → La Fuente).
+  function destsAt(id) {
+    var d = {};
+    Object.keys(combos[id] || {}).forEach(function (k) { Object.keys(combos[id][k].to).forEach(function (x) { d[x] = 1; }); });
+    return Object.keys(d).sort();
   }
 
   // ---------- Formato ----------
@@ -82,7 +89,7 @@
   function badge(route) {
     var r = sched.routes[route] || [route, "", ""];
     var bg = /^[0-9a-f]{6}$/i.test(r[2] || "") ? r[2] : "135FCB", L = lum(bg);
-    var fg = (L + 0.05) / 0.05 > 1.05 / (L + 0.05) ? "#101a2b" : "#ffffff";
+    var fg = (L + 0.05) / 0.05 > 1.05 / (L + 0.05) ? "#000000" : "#ffffff";
     return '<span class="badge" style="background:#' + bg + ";color:" + fg + '">' + esc(r[0]) + "</span>";
   }
 
@@ -154,18 +161,29 @@
     else if (geo.error) { msg.textContent = geo.error; msg.hidden = false; }
     else if (!geo.pos) { msg.textContent = "Activa la ubicación para ver las 3 paradas más cercanas."; msg.hidden = false; }
     else msg.hidden = true;
-    if (!geo.pos) { box.innerHTML = ""; return; }
+    if (!geo.pos) { if (box._ids) { box.innerHTML = ""; box._ids = ""; } return; }
     var near = stops.map(function (s) { return { s: s, d: dist(geo.pos, [s.lat, s.lon]) }; })
       .sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
-    box.innerHTML = near.map(function (n) {
+    if (near[0].d > 3000) { msg.textContent = "Estás a " + distTxt(near[0].d) + " de la parada de EMT Fuenlabrada más cercana."; msg.hidden = false; }
+    // La tarjeta (y su botón) solo se crea cuando cambian las paradas: así no se pierde el foco ni el clic al repintar cada segundo.
+    var ids = near.map(function (n) { return n.s.id; }).join(",");
+    if (box._ids !== ids) {
+      box._ids = ids;
+      box.innerHTML = near.map(function (n) {
+        return '<li class="near"><span class="near-head"><button type="button" class="near-name" data-stop="' + esc(n.s.id) + '">' + esc(n.s.name) + '</button><span class="near-dist"></span></span>' +
+          '<span class="near-meta">Parada <b>' + esc(n.s.id) + "</b> " + routesAt(n.s.id).map(badge).join("") + "</span>" +
+          '<ul class="rows"></ul></li>';
+      }).join("");
+    }
+    near.forEach(function (n, i) {
+      var li = box.children[i];
       var list = arrivalsAt(n.s.id, t).filter(function (a) { return !a.canceled && !a.skipped; }).slice(0, 3);
-      return '<li><button type="button" class="near" data-stop="' + esc(n.s.id) + '">' +
-        '<span class="near-head"><span class="near-name">' + esc(n.s.name) + '</span><span class="near-dist">' + distTxt(n.d) + "</span></span>" +
-        '<span class="near-meta">Parada <b>' + esc(n.s.id) + "</b> " + routesAt(n.s.id).map(badge).join("") + "</span>" +
-        '<ul class="rows">' + (list.length ? list.map(rowHtml).join("") : '<li class="none">' + (state.feeds || state.error ? "Sin buses en las próximas 3 horas" : "Cargando…") + "</li>") + "</ul>" +
-        "</button></li>";
-    }).join("");
+      setText(li.querySelector(".near-dist"), distTxt(n.d));
+      setHtml(li.querySelector(".rows"), list.length ? list.map(rowHtml).join("") : '<li class="none">' + (state.feeds || state.error ? "Sin buses en las próximas 3 horas" : "Cargando…") + "</li>");
+    });
   }
+  function setHtml(el, html) { if (el._h !== html) { el.innerHTML = html; el._h = html; } }
+  function setText(el, s) { if (el.textContent !== s) el.textContent = s; }
   function renderStatus(t) {
     var parts = [];
     if (state.loading) parts.push("Actualizando…");
@@ -203,17 +221,24 @@
     box.hidden = false;
     box.innerHTML = res.length ? res.map(function (s) {
       return '<li><button type="button" class="sug" data-stop="' + esc(s.id) + '"><b>' + esc(s.id) + "</b> " + esc(s.name) +
-        ' <span class="sug-lines">' + routesAt(s.id).map(badge).join("") + "</span></button></li>";
-    }).join("") : '<li class="none">No hay ninguna parada con «' + esc(q.trim()) + "».</li>";
+        ' <span class="sug-lines">' + routesAt(s.id).map(badge).join("") + '</span><span class="sug-to">→ ' + esc(destsAt(s.id).join(", ")) + "</span></button></li>";
+    }).join("") : '<li class="none">' + noneMsg(q.trim()) + "</li>";
+  }
+  function noneMsg(q) {
+    var s = sched.stops[q];
+    if (s) return "La parada " + esc(q) + " (" + esc(s[0]) + ") es final de línea: ahí no se sube a ningún bus.";
+    return "No hay ninguna parada con «" + esc(q) + "».";
   }
   function selectStop(id, fromHash) {
     if (!byId[id]) return;
     state.stop = id;
     store.set("paradas.last", id);
     if (!fromHash && location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
+    var lost = !document.activeElement || document.activeElement === document.body || $("suggest").contains(document.activeElement);
     $("q").value = ""; renderSuggest();
     render();
     $("stop").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (lost || document.activeElement === document.body) $("stop-name").focus({ preventScroll: true });
   }
 
   // ---------- Ubicación ----------
@@ -267,9 +292,15 @@
   $("btn-locate").addEventListener("click", locate);
   $("btn-refresh").addEventListener("click", function () { refresh(); if (geo.pos) locate(); });
   $("btn-close").addEventListener("click", function () {
-    state.stop = null; history.replaceState(null, "", location.pathname + location.search); document.title = "Paradas EMTF"; render();
+    closeStop(); $("q").focus();
   });
-  window.addEventListener("hashchange", function () { var h = location.hash.slice(1); if (byId[h]) selectStop(h, true); });
+  function closeStop() { state.stop = null; history.replaceState(null, "", location.pathname + location.search); document.title = "Paradas EMTF"; render(); }
+  // Enlace a una parada que no existe: se ve en el buscador con su mensaje en vez de no hacer nada.
+  function badHash(h) { try { h = decodeURIComponent(h); } catch (e) { /* hash mal codificado */ } $("q").value = h; renderSuggest(); }
+  window.addEventListener("hashchange", function () {
+    var h = location.hash.slice(1);
+    if (byId[h]) selectStop(h, true); else if (!h) closeStop(); else { closeStop(); badHash(h); }
+  });
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible" && (!state.fetchedAt || Date.now() - state.fetchedAt > 10e3)) { refresh(); if (geo.pos) locate(); }
   });
@@ -277,6 +308,7 @@
   // Arranque: parada del enlace (#15956) y ubicación si ya diste permiso.
   var h = location.hash.slice(1);
   if (byId[h]) { state.stop = h; }
+  else if (h) badHash(h);
   render();
   refresh();
   if (store.get("paradas.geo") === "1") locate();

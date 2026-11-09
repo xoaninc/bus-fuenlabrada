@@ -82,6 +82,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outlin
 .sug b { font-variant-numeric: tabular-nums; }
 .sug:hover, .sug:focus-visible { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .sug-lines { display: inline-flex; gap: 4px; }
+.sug-to { color: var(--muted); font-size: .9rem; flex-basis: 100%; }
 
 .badge {
   display: inline-grid; place-items: center; min-width: 1.9rem; height: 1.6rem; padding: 0 .35rem; border-radius: 6px;
@@ -113,12 +114,17 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outlin
 .near-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .near-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .near {
-  width: 100%; text-align: left; color: var(--ink); background: var(--surface); border: 1px solid var(--rule);
-  border-radius: 16px; padding: 12px 16px 6px; display: flex; flex-direction: column; gap: 4px; font: inherit;
+  position: relative; color: var(--ink); background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 16px; padding: 12px 16px 6px; display: flex; flex-direction: column; gap: 4px;
 }
 .near:hover { border-color: var(--accent); }
 .near-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.near-name { font: 700 1.2rem/1.15 var(--font-display); overflow-wrap: anywhere; }
+.near-name { font: 700 1.2rem/1.15 var(--font-display); overflow-wrap: anywhere; color: var(--ink); background: none; border: 0; border-radius: 0; padding: 0; text-align: left; }
+/* Toda la tarjeta es el botón: la capa ::after cubre la tarjeta, así que el clic siempre cae en el botón aunque las filas se repinten. */
+.near-name::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }
+.near-name:focus-visible { outline: none; }
+.near-name:focus-visible::after { outline: 3px solid var(--accent); outline-offset: 2px; }
+#stop-lines { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .near-dist { color: var(--accent); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .near-meta { color: var(--muted); font-size: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .near-meta b { color: var(--ink); }
@@ -155,7 +161,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outlin
   <section class="card stop" id="stop" hidden aria-live="off">
     <div class="card-head">
       <div>
-        <h2 id="stop-name"></h2>
+        <h2 id="stop-name" tabindex="-1"></h2>
         <p>Parada <b id="stop-code"></b> <span id="stop-lines"></span></p>
       </div>
       <button type="button" class="close" id="btn-close" aria-label="Cerrar parada">Cerrar</button>
