@@ -1,0 +1,61 @@
+name: Actualizar horario
+
+# Cada mañana baja el GTFS de EMTF del NAP, regenera index.html y lo publica si ha cambiado.
+# Necesita el secreto NAP_API_KEY (Settings → Secrets and variables → Actions).
+on:
+  schedule:
+    - cron: "17 4 * * *" # 05:17 en invierno / 06:17 en verano (hora de Madrid)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: actualizar-horario
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Descargar el GTFS de EMTF del NAP y regenerar la página
+        env:
+          NAP_API_KEY: ${{ secrets.NAP_API_KEY }}
+        run: |
+          if [ -z "$NAP_API_KEY" ]; then
+            echo "::warning::Falta el secreto NAP_API_KEY: el horario no se actualiza."
+            exit 0
+          fi
+          api=https://nap.transportes.gob.es/api/v2
+          # Conjunto de datos 1628 = EMTF; se busca su fichero GTFS-ZIP por si cambia de id.
+          id=$(curl -fsS --retry 3 -H "ApiKey: $NAP_API_KEY" "$api/conjunto-dato/1628" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const f=JSON.parse(s).data.ficheros.find(x=>x.nombreTipoFichero==="GTFS-ZIP");console.log(f?f.id:"")})')
+          [ -n "$id" ] || { echo "::error::No encuentro el GTFS-ZIP de EMTF en el NAP"; exit 1; }
+          url=$(curl -fsS --retry 3 -H "ApiKey: $NAP_API_KEY" "$api/fichero/$id/descarga" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).data.enlaceDescarga))')
+          curl -fsS --retry 3 "$url" -o "$RUNNER_TEMP/emtf.zip"
+          mkdir -p "$RUNNER_TEMP/gtfs"
+          unzip -o -q "$RUNNER_TEMP/emtf.zip" -d "$RUNNER_TEMP/gtfs"
+          node src/build.js "$RUNNER_TEMP/gtfs" index.html
+
+      - name: Publicar si ha cambiado
+        run: |
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "El horario no ha cambiado."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Horario actualizado con el GTFS del NAP"
+          git push
+          # Pide a GitHub Pages que publique ya la nueva versión.
+          curl -fsS -X POST -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || true

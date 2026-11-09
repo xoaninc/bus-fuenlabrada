@@ -13,7 +13,11 @@ En el iPhone: ábrela en Safari → Compartir → «Añadir a pantalla de inicio
 
 La hora prevista es la del horario más el retraso que publica EMTF. Con el GPS se muestra por dónde va el bus y cuántas paradas le faltan.
 
-## Regenerar la página con un GTFS nuevo
+## Actualización automática del horario
+
+La acción `.github/workflows/actualizar-horario.yml` se ejecuta cada mañana: baja el GTFS-ZIP de EMTF del NAP, regenera `index.html` y lo publica si ha cambiado. Necesita la clave de la API del NAP guardada como secreto del repositorio con el nombre `NAP_API_KEY` (Settings → Secrets and variables → Actions → New repository secret). También se puede lanzar a mano desde la pestaña Actions → «Actualizar horario» → Run workflow.
+
+## Regenerar la página a mano con un GTFS nuevo
 
 ```sh
 unzip EMTF.zip -d gtfs
