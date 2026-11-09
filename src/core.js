@@ -460,6 +460,8 @@ var BusCore = (function () {
       var base = serviceBaseMs(m.date), v = vpFor(td, u);
       var ti = -1;
       for (var i = 0; i < ids.length; i++) if (ids[i] === cfg.stop && (firstSeq == null || seqs[i] >= firstSeq)) { ti = i; break; }
+      // boardingOnly: en la parada final del recorrido no se sube nadie (el bus llega a cabecera).
+      if (cfg.boardingOnly && ti === ids.length - 1) return;
       if (ti < 0) {
         // El TripUpdate ya quitó tu parada, pero el GPS dice que el bus está ahí mismo: sigue siendo «Llegando».
         var li = -1;
@@ -544,7 +546,7 @@ var BusCore = (function () {
           var p = sched.patterns[tr[0]];
           if (p[0] !== cfg.route || p[1] !== cfg.dir || seen[date + "|" + tr[1]]) return;
           var ti = p[3].indexOf(cfg.stop);
-          if (ti < 0) return;
+          if (ti < 0 || (cfg.boardingOnly && ti === p[3].length - 1)) return;
           var ms = base + (tr[1] + p[4][ti]) * 1000;
           if (ms < nowMs - 60e3 || ms > nowMs + 3 * 3600e3) return;
           seen[date + "|" + tr[1]] = 1;

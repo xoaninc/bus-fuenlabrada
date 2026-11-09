@@ -6,6 +6,8 @@ Cuánto le queda al próximo bus **L4 de EMT Fuenlabrada, dirección Loranca**, 
 
 En el iPhone: ábrela en Safari → Compartir → «Añadir a pantalla de inicio».
 
+**Otras paradas:** https://xoaninc.github.io/bus-fuenlabrada/paradas.html — buscador por número o nombre de parada y las 3 paradas más cercanas a tu ubicación, con los próximos buses de todas las líneas. Se puede enlazar una parada concreta: `paradas.html#15956`.
+
 ## De dónde salen los datos
 
 - **Tiempo real**: feeds GTFS-Realtime públicos de EMTF enlazados en el [NAP](https://nap.transportes.gob.es/ConjuntoDato/Detail/1628) y servidos por Optibus (`https://api.control.optibus.co/opendata/v1/gtfs-rt/{trip-updates,vehicle-positions,alerts}?uid=c-5cfcd2d1`). No necesitan clave. La página los descarga cada 30 s.
@@ -15,13 +17,13 @@ La hora prevista es la del horario más el retraso que publica EMTF. Con el GPS 
 
 ## Actualización automática del horario
 
-La acción `.github/workflows/actualizar-horario.yml` se ejecuta cada mañana: baja el GTFS-ZIP de EMTF del NAP, regenera `index.html` y lo publica si ha cambiado. Necesita la clave de la API del NAP guardada como secreto del repositorio con el nombre `NAP_API_KEY` (Settings → Secrets and variables → Actions → New repository secret). También se puede lanzar a mano desde la pestaña Actions → «Actualizar horario» → Run workflow.
+La acción `.github/workflows/actualizar-horario.yml` se ejecuta cada mañana: baja el GTFS-ZIP de EMTF del NAP, regenera `index.html` y `paradas.html` y los publica si han cambiado. Necesita la clave de la API del NAP guardada como secreto del repositorio con el nombre `NAP_API_KEY` (Settings → Secrets and variables → Actions → New repository secret). También se puede lanzar a mano desde la pestaña Actions → «Actualizar horario» → Run workflow.
 
 ## Regenerar la página a mano con un GTFS nuevo
 
 ```sh
 unzip EMTF.zip -d gtfs
-node src/build.js gtfs index.html
+node src/build.js gtfs index.html paradas.html
 ```
 
-`src/core.js` es el motor (horario, decodificador GTFS-RT y cálculo de llegadas); `src/app.js` y `src/template.html` son la interfaz.
+`src/core.js` es el motor (horario, decodificador GTFS-RT y cálculo de llegadas); `src/app.js` y `src/template.html` son la página principal, y `src/paradas.js` y `src/paradas.template.html` la del buscador.

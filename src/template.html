@@ -116,6 +116,8 @@ a { color: var(--accent); }
 .msg { color: var(--muted); }
 .msg:empty { display: none; }
 .foot { color: var(--muted); font-size: .8rem; margin: 0; }
+.other { font-weight: 600; text-decoration: none; align-self: flex-start; }
+.other:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -144,6 +146,7 @@ a { color: var(--accent); }
     <p class="status" id="status">Descargando datos en directo…</p>
     <button type="button" id="btn-refresh">Actualizar</button>
   </div>
+  <a class="other" href="paradas.html">Buscar otra parada o ver las más cercanas →</a>
   <p class="foot">Tiempo real de EMT Fuenlabrada (NAP · Optibus). Se actualiza solo cada 30 s.</p>
 </main>
 <script>/*DATA*/</script>

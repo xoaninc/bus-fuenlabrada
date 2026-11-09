@@ -1,6 +1,6 @@
 name: Actualizar horario
 
-# Cada mañana baja el GTFS de EMTF del NAP, regenera index.html y lo publica si ha cambiado.
+# Cada mañana baja el GTFS de EMTF del NAP, regenera index.html y paradas.html y los publica si han cambiado.
 # Necesita el secreto NAP_API_KEY (Settings → Secrets and variables → Actions).
 on:
   schedule:
@@ -43,11 +43,11 @@ jobs:
           curl -fsS --retry 3 "$url" -o "$RUNNER_TEMP/emtf.zip"
           mkdir -p "$RUNNER_TEMP/gtfs"
           unzip -o -q "$RUNNER_TEMP/emtf.zip" -d "$RUNNER_TEMP/gtfs"
-          node src/build.js "$RUNNER_TEMP/gtfs" index.html
+          node src/build.js "$RUNNER_TEMP/gtfs" index.html paradas.html
 
       - name: Publicar si ha cambiado
         run: |
-          git add index.html
+          git add index.html paradas.html
           if git diff --cached --quiet; then
             echo "El horario no ha cambiado."
             exit 0
