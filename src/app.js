@@ -84,7 +84,9 @@
       next.textContent = "";
       document.title = "L4 · 15956";
     } else {
-      var a = live[0], s = statusOf(a), m = minsLeft(a.etaMs), schedOnly = a.source === "sched";
+      var a = live[0], s = statusOf(a), schedOnly = a.source === "sched";
+      // Si el GPS ya lo pone en tu parada, no tiene sentido una cuenta atrás: «Llegando».
+      var m = a.pos && a.pos.stopsLeft === 0 && a.pos.atStop ? null : minsLeft(a.etaMs);
       var gps = "";
       if (a.pos && a.pos.ahead && a.predMs != null && a.pos.ms < a.predMs - 60e3) {
         gps = '<p class="hero-gps">Según el GPS va más adelantado de lo que dice la predicción: podría pasar hacia las <strong>' + hm(Math.max(a.pos.ms, t)) + "</strong>.</p>";

@@ -274,34 +274,49 @@ var BusCore = (function () {
   // Coloca cada actualización del TripUpdate en su parada del patrón. Primero por stop_sequence; si la
   // numeración del tiempo real no coincide con la del horario (p. ej. EMTF quita del recorrido las paradas
   // anuladas por obras y renumera), por el orden de las paradas. Devuelve null si el viaje no encaja.
-  function alignStus(p, raw) {
-    var ids = p[3], seqs = seqsOf(p), bySeq = true, out = [], last = -1, k, s, i;
+  // Numeración que usa EMTF cuando quita del recorrido las paradas anuladas por aviso (y la repetida de después).
+  function compactSeqs(ids, skip) {
+    var out = [], n = 0, prev = null;
+    for (var i = 0; i < ids.length; i++) { if (skip[ids[i]] || ids[i] === prev) out.push(null); else { out.push(++n); prev = ids[i]; } }
+    return out;
+  }
+  function alignStus(p, raw, skip) {
+    skip = skip || {};
+    var ids = p[3], seqs = seqsOf(p), bySeq = true, out = [], last = -1, k, s, i, j;
     for (k = 0; k < raw.length; k++) {
       s = raw[k];
       if (s.stop_sequence != null && s.stop_id != null && ids[seqs.indexOf(s.stop_sequence)] !== s.stop_id) { bySeq = false; break; }
     }
+    // Sin ningún stop_id no se puede comprobar la numeración: si el patrón aún lleva paradas anuladas, EMTF numera sin ellas.
+    var noIds = raw.length > 0 && raw.every(function (x) { return x.stop_id == null; });
+    var seqMap = noIds && ids.some(function (x) { return skip[x]; }) ? compactSeqs(ids, skip) : seqs;
     if (bySeq) {
       for (k = 0; k < raw.length; k++) {
         s = raw[k]; i = -1;
-        if (s.stop_sequence != null) i = seqs.indexOf(s.stop_sequence);
-        else if (s.stop_id != null) { for (var j = last + 1; j < ids.length; j++) if (ids[j] === s.stop_id) { i = j; break; } }
+        if (s.stop_sequence != null) i = seqMap.indexOf(s.stop_sequence);
+        else if (s.stop_id != null) { for (j = last + 1; j < ids.length; j++) if (ids[j] === s.stop_id) { i = j; break; } }
         if (i < 0) { if (s.stop_id != null) return null; continue; }
         last = i; out.push({ idx: i, seq: seqs[i], s: s });
       }
     } else {
-      var ordered = raw.slice().sort(function (a, b) { return (a.stop_sequence || 0) - (b.stop_sequence || 0); });
+      // GTFS-RT pide las STU en orden: solo se reordena si todas traen stop_sequence (las que no, no van al principio).
+      var ordered = raw.every(function (x) { return x.stop_sequence != null; }) ? raw.slice().sort(function (a, b) { return a.stop_sequence - b.stop_sequence; }) : raw;
       for (k = 0; k < ordered.length; k++) {
         s = ordered[k];
         if (s.stop_id == null) continue;
         i = -1;
-        for (var j2 = last + 1; j2 < ids.length; j2++) if (ids[j2] === s.stop_id) { i = j2; break; }
-        if (i < 0) return null;
-        last = i; out.push({ idx: i, seq: seqs[i], s: s });
+        for (j = last + 1; j < ids.length; j++) if (ids[j] === s.stop_id) { i = j; break; }
+        if (i < 0) {
+          // Parada anulada por aviso o la misma que la anterior (bucle 7739→7743→7742→7739): no está en este patrón.
+          if (skip[s.stop_id] || (out.length && ids[out[out.length - 1].idx] === s.stop_id)) continue;
+          return null;
+        }
+        last = i; out.push({ idx: i, seq: seqs[i], s: s, renum: true });
       }
     }
     return out.sort(function (a, b) { return a.idx - b.idx; });
   }
-  function patternFits(p, stus) { return alignStus(p, stus) !== null; }
+  function patternFits(p, stus, skip) { return alignStus(p, stus, skip) !== null; }
 
   function startOf(td) {
     var t0 = hms(td.start_time);
@@ -332,7 +347,7 @@ var BusCore = (function () {
     return out;
   }
 
-  function matchTrip(sched, idx, td, fallbackDate, stus, forced) {
+  function matchTrip(sched, idx, td, fallbackDate, stus, forced, skip) {
     var t0 = startOf(td);
     var route = td.route_id;
     if (route == null) { var r = /^L(\w+?)_/.exec(td.trip_id || ""); if (r) route = r[1]; }
@@ -356,7 +371,7 @@ var BusCore = (function () {
         (idx.anyKey[route + "|" + dir + "|" + t0] || []).forEach(function (c) { cands.push({ pi: c[1], t0: t0, dt: 0, score: svcScore(idx, c[0], wd) }); });
       });
     }
-    cands = cands.filter(function (c) { return patternFits(sched.patterns[c.pi], stus || []); });
+    cands = cands.filter(function (c) { return patternFits(sched.patterns[c.pi], stus || [], skip); });
     if (!cands.length) return null;
     cands.sort(function (a, b) { return a.dt - b.dt || b.score - a.score; });
     return { pi: cands[0].pi, t0: cands[0].t0, date: date, exact: !!sched.dates[date] };
@@ -378,10 +393,10 @@ var BusCore = (function () {
     return out;
   }
 
-  function stopsUntil(ids, fromIdx, fromStopId, ti, skip) {
+  function stopsUntil(ids, fromIdx, fromStopId, ti, skip, gone) {
     var n = 0, prev = fromStopId;
     for (var k = fromIdx + 1; k <= ti; k++) {
-      if (skip[ids[k]] || ids[k] === prev) continue;
+      if (skip[ids[k]] || (gone && gone[k]) || ids[k] === prev) continue;
       n++; prev = ids[k];
     }
     return n;
@@ -416,7 +431,7 @@ var BusCore = (function () {
       var td = u.trip || {}, raw = u.stop_time_update || [];
       if (td.route_id != null && td.route_id !== cfg.route) return;
       if (td.direction_id != null && td.direction_id !== cfg.dir) return;
-      var m = td.schedule_relationship === 1 ? null : matchTrip(sched, idx, td, today, raw, forced);
+      var m = td.schedule_relationship === 1 ? null : matchTrip(sched, idx, td, today, raw, forced, skip);
       if (!m) {
         // Viaje añadido (refuerzo) o que no está en el horario: solo si trae hora absoluta en tu parada.
         if (td.route_id !== cfg.route && !(td.trip_id || "").match(new RegExp("^L" + cfg.route + "_"))) return;
@@ -433,7 +448,13 @@ var BusCore = (function () {
       seen[key] = 1;
       var ids = p[3], offs = p[4], seqs = seqsOf(p);
       // Normaliza las actualizaciones a la numeración del patrón del horario.
-      var stus = alignStus(p, raw) || [];
+      var stus = alignStus(p, raw, skip) || [];
+      // Con la numeración de EMTF distinta: paradas del patrón entre dos STU consecutivas (seq +1) que el bus no hace.
+      var gone = {};
+      for (i = 1; i < stus.length; i++) {
+        var A = stus[i - 1], B = stus[i];
+        if (B.renum && A.s.stop_sequence != null && B.s.stop_sequence === A.s.stop_sequence + 1) for (var g = A.idx + 1; g < B.idx; g++) gone[g] = 1;
+      }
       var firstSeq = stus.length ? stus[0].seq : null;
       var fi = firstSeq != null ? Math.max(0, seqs.indexOf(firstSeq)) : 0;
       var base = serviceBaseMs(m.date), v = vpFor(td, u);
@@ -497,7 +518,7 @@ var BusCore = (function () {
           var atStop = !!nearStop && dist(P, [nearStop[1], nearStop[2]]) < 50;
           var schedHere = offs[here] + best.t * ((offs[here + 1] != null ? offs[here + 1] : offs[here]) - offs[here]);
           var posMs = (v.timestamp ? v.timestamp * 1000 : nowMs) + (offs[ti] - schedHere) * 1000;
-          var left = atStop ? stopsUntil(ids, nearIdx, ids[nearIdx], ti, skip) : nearIdx === ti ? 0 : stopsUntil(ids, here, ids[here], ti, skip);
+          var left = atStop ? stopsUntil(ids, nearIdx, ids[nearIdx], ti, skip, gone) : nearIdx === ti ? 0 : stopsUntil(ids, here, ids[here], ti, skip, gone);
           pos = {
             ms: posMs,
             // Solo si el GPS lo sitúa más allá de lo que cree la predicción y además da una hora anterior.
