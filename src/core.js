@@ -271,16 +271,37 @@ var BusCore = (function () {
 
   function seqsOf(p) { return p[5] || p[3].map(function (_, i) { return i + 1; }); }
   // ¿Encajan las paradas del TripUpdate con este patrón? (descarta el sentido o el viaje equivocado)
-  function patternFits(p, stus) {
-    var ids = p[3], seqs = seqsOf(p);
-    for (var k = 0; k < stus.length; k++) {
-      var s = stus[k];
-      if (s.stop_id == null) continue;
-      if (s.stop_sequence != null) { if (ids[seqs.indexOf(s.stop_sequence)] !== s.stop_id) return false; }
-      else if (ids.indexOf(s.stop_id) < 0) return false;
+  // Coloca cada actualización del TripUpdate en su parada del patrón. Primero por stop_sequence; si la
+  // numeración del tiempo real no coincide con la del horario (p. ej. EMTF quita del recorrido las paradas
+  // anuladas por obras y renumera), por el orden de las paradas. Devuelve null si el viaje no encaja.
+  function alignStus(p, raw) {
+    var ids = p[3], seqs = seqsOf(p), bySeq = true, out = [], last = -1, k, s, i;
+    for (k = 0; k < raw.length; k++) {
+      s = raw[k];
+      if (s.stop_sequence != null && s.stop_id != null && ids[seqs.indexOf(s.stop_sequence)] !== s.stop_id) { bySeq = false; break; }
     }
-    return true;
+    if (bySeq) {
+      for (k = 0; k < raw.length; k++) {
+        s = raw[k]; i = -1;
+        if (s.stop_sequence != null) i = seqs.indexOf(s.stop_sequence);
+        else if (s.stop_id != null) { for (var j = last + 1; j < ids.length; j++) if (ids[j] === s.stop_id) { i = j; break; } }
+        if (i < 0) { if (s.stop_id != null) return null; continue; }
+        last = i; out.push({ idx: i, seq: seqs[i], s: s });
+      }
+    } else {
+      var ordered = raw.slice().sort(function (a, b) { return (a.stop_sequence || 0) - (b.stop_sequence || 0); });
+      for (k = 0; k < ordered.length; k++) {
+        s = ordered[k];
+        if (s.stop_id == null) continue;
+        i = -1;
+        for (var j2 = last + 1; j2 < ids.length; j2++) if (ids[j2] === s.stop_id) { i = j2; break; }
+        if (i < 0) return null;
+        last = i; out.push({ idx: i, seq: seqs[i], s: s });
+      }
+    }
+    return out.sort(function (a, b) { return a.idx - b.idx; });
   }
+  function patternFits(p, stus) { return alignStus(p, stus) !== null; }
 
   function startOf(td) {
     var t0 = hms(td.start_time);
@@ -411,18 +432,8 @@ var BusCore = (function () {
       var key = m.date + "|" + m.t0;
       seen[key] = 1;
       var ids = p[3], offs = p[4], seqs = seqsOf(p);
-      // Normaliza las actualizaciones: secuencia (o la deduce por stop_id) y orden.
-      var last = -1, stus = [];
-      raw.forEach(function (s) {
-        var seq = s.stop_sequence;
-        if (seq == null && s.stop_id != null) {
-          for (var i = last + 1; i < ids.length; i++) if (ids[i] === s.stop_id) { seq = seqs[i]; break; }
-        }
-        if (seq == null) return;
-        last = seqs.indexOf(seq);
-        stus.push({ seq: seq, s: s });
-      });
-      stus.sort(function (a, b) { return a.seq - b.seq; });
+      // Normaliza las actualizaciones a la numeración del patrón del horario.
+      var stus = alignStus(p, raw) || [];
       var firstSeq = stus.length ? stus[0].seq : null;
       var fi = firstSeq != null ? Math.max(0, seqs.indexOf(firstSeq)) : 0;
       var base = serviceBaseMs(m.date), v = vpFor(td, u);
